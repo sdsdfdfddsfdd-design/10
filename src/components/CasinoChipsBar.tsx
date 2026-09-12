@@ -13,53 +13,53 @@ export const CasinoChipsBar: React.FC<CasinoChipsBarProps> = ({
   onSelectChip,
   disabled = false,
 }) => {
-  const getChipStyle = (val: number) => {
+  const getChipDetails = (val: number) => {
     switch (val) {
       case 100:
         return {
-          bg: 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300',
-          border: 'border-cyan-200',
-          textColor: 'text-slate-950 font-black',
-          dashes: 'border-white',
+          clayColor: '#059669', // Emerald
+          clayLight: '#34d399',
+          clayDark: '#064e3b',
+          stripeColor: '#ffffff',
           label: '100',
-          outerRing: 'ring-teal-300',
+          accent: '#10b981',
         };
       case 1000:
         return {
-          bg: 'bg-gradient-to-tr from-slate-200 via-white to-slate-300',
-          border: 'border-slate-400',
-          textColor: 'text-slate-900 font-black',
-          dashes: 'border-slate-800',
-          label: '1000',
-          outerRing: 'ring-slate-300',
+          clayColor: '#2563eb', // Royal Blue
+          clayLight: '#60a5fa',
+          clayDark: '#1e3a8a',
+          stripeColor: '#facc15',
+          label: '1K',
+          accent: '#3b82f6',
         };
       case 10000:
       case 2000:
         return {
-          bg: 'bg-gradient-to-tr from-slate-800 via-slate-700 to-slate-900',
-          border: 'border-slate-500',
-          textColor: 'text-white font-black',
-          dashes: 'border-slate-300',
-          label: '10k',
-          outerRing: 'ring-slate-400',
+          clayColor: '#7c3aed', // Purple VIP
+          clayLight: '#a78bfa',
+          clayDark: '#4c1d95',
+          stripeColor: '#f43f5e',
+          label: '10K',
+          accent: '#8b5cf6',
         };
       case 100000:
       default:
         return {
-          bg: 'bg-gradient-to-tr from-slate-400 via-blue-200 to-slate-300',
-          border: 'border-slate-400',
-          textColor: 'text-slate-900 font-black',
-          dashes: 'border-slate-700',
+          clayColor: '#18181b', // Obsidian Black & Gold
+          clayLight: '#3f3f46',
+          clayDark: '#09090b',
+          stripeColor: '#fbbf24',
           label: '100K',
-          outerRing: 'ring-blue-300',
+          accent: '#eab308',
         };
     }
   };
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2.5">
+    <div className="flex items-center gap-2 sm:gap-3 py-1">
       {chips.map((chipVal) => {
-        const style = getChipStyle(chipVal);
+        const details = getChipDetails(chipVal);
         const isSelected = selectedChip === chipVal;
 
         return (
@@ -68,27 +68,145 @@ export const CasinoChipsBar: React.FC<CasinoChipsBarProps> = ({
             id={`btn-chip-${chipVal}`}
             disabled={disabled}
             onClick={() => onSelectChip(chipVal)}
-            className={`group relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-200 transform ${
+            className={`group relative w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
               isSelected
-                ? 'scale-110 -translate-y-1.5 shadow-[0_8px_20px_rgba(250,204,21,0.6)] ring-4 ring-yellow-400 z-10'
-                : 'hover:scale-105 active:scale-95 opacity-90 hover:opacity-100 shadow-md'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                ? 'scale-110 -translate-y-2 z-20'
+                : 'hover:scale-105 active:scale-95 opacity-95 hover:opacity-100'
+            } ${disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+            title={`Select ${chipVal.toLocaleString()} Chip`}
           >
-            {/* Outer dashed border resembling real casino chips in the photo */}
-            <div
-              className={`w-full h-full rounded-full border-2 sm:border-[3px] border-dashed ${style.dashes} ${style.bg} p-1 flex items-center justify-center shadow-inner`}
+            {/* Realistic 3D SVG Casino Chip */}
+            <svg
+              viewBox="0 0 100 100"
+              className={`w-full h-full select-none transition-transform duration-200 ${
+                isSelected
+                  ? 'filter drop-shadow-[0_12px_15px_rgba(0,0,0,0.85)] drop-shadow-[0_0_12px_rgba(250,204,21,0.7)]'
+                  : 'filter drop-shadow-[0_5px_8px_rgba(0,0,0,0.6)]'
+              }`}
             >
-              {/* Center Medallion with Chip Value */}
-              <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full bg-white/90 border border-black/20 flex items-center justify-center shadow-sm">
-                <span className={`text-[10px] sm:text-xs md:text-sm tracking-tight ${style.textColor}`}>
-                  {style.label}
-                </span>
-              </div>
-            </div>
+              <defs>
+                {/* 3D Chip Rim Gradient */}
+                <radialGradient id={`chipRim-${chipVal}`} cx="45%" cy="40%" r="55%">
+                  <stop offset="0%" stopColor={details.clayLight} />
+                  <stop offset="65%" stopColor={details.clayColor} />
+                  <stop offset="100%" stopColor={details.clayDark} />
+                </radialGradient>
 
-            {/* Glowing selected tick indicator */}
+                {/* 3D Inlay Recessed Shadow */}
+                <radialGradient id={`chipCore-${chipVal}`} cx="50%" cy="45%" r="50%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="70%" stopColor="#f1f5f9" />
+                  <stop offset="100%" stopColor="#cbd5e1" />
+                </radialGradient>
+
+                {/* Gold Bevel Ring */}
+                <linearGradient id={`goldRing-${chipVal}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="50%" stopColor="#ca8a04" />
+                  <stop offset="100%" stopColor="#78350f" />
+                </linearGradient>
+              </defs>
+
+              {/* Base Clay Body */}
+              <circle
+                cx="50"
+                cy="50"
+                r="46"
+                fill={`url(#chipRim-${chipVal})`}
+                stroke="rgba(0,0,0,0.4)"
+                strokeWidth="1.5"
+              />
+
+              {/* Edge Inserts / Notches (Realistic 6-Stripe Casino Chip) */}
+              {[0, 60, 120, 180, 240, 300].map((angle, idx) => (
+                <g key={idx} transform={`rotate(${angle} 50 50)`}>
+                  <rect
+                    x="46"
+                    y="4"
+                    width="8"
+                    height="10"
+                    rx="1.5"
+                    fill={details.stripeColor}
+                    stroke="rgba(0,0,0,0.25)"
+                    strokeWidth="0.8"
+                  />
+                </g>
+              ))}
+
+              {/* Outer Molded Groove Line */}
+              <circle
+                cx="50"
+                cy="50"
+                r="38"
+                fill="none"
+                stroke="rgba(0,0,0,0.3)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+              />
+
+              {/* Inner Molded Groove Highlight */}
+              <circle
+                cx="50"
+                cy="50"
+                r="37"
+                fill="none"
+                stroke="rgba(255,255,255,0.4)"
+                strokeWidth="0.8"
+              />
+
+              {/* Recessed Center Inlay Disc with Gold Rim */}
+              <circle
+                cx="50"
+                cy="50"
+                r="28"
+                fill={`url(#goldRing-${chipVal})`}
+                stroke="rgba(0,0,0,0.5)"
+                strokeWidth="1"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="25.5"
+                fill={`url(#chipCore-${chipVal})`}
+                stroke="rgba(0,0,0,0.15)"
+                strokeWidth="0.5"
+              />
+
+              {/* Top Specular Sheen (Gives Real 3D Ceramic/Clay Glaze) */}
+              <path
+                d="M 28 35 A 24 24 0 0 1 72 35 A 25 15 0 0 0 28 35 Z"
+                fill="rgba(255,255,255,0.45)"
+              />
+
+              {/* Center Denomination Text with 3D Emboss */}
+              <text
+                x="50"
+                y="54"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={details.label.length > 3 ? "14" : "16"}
+                fontWeight="900"
+                fontFamily="system-ui, -apple-system, sans-serif"
+                fill="#0f172a"
+              >
+                {details.label}
+              </text>
+
+              {/* Tiny Crown Motif below Denomination */}
+              <text
+                x="50"
+                y="67"
+                textAnchor="middle"
+                fontSize="7"
+                fill="#ca8a04"
+              >
+                ★ ROYAL ★
+              </text>
+            </svg>
+
+            {/* Glowing Selection Halo */}
             {isSelected && (
-              <div className="absolute -top-1 w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]" />
+              <div className="absolute -top-1.5 w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_10px_#facc15] border border-white animate-bounce" />
             )}
           </button>
         );
@@ -96,3 +214,4 @@ export const CasinoChipsBar: React.FC<CasinoChipsBarProps> = ({
     </div>
   );
 };
+
