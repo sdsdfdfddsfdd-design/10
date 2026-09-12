@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Public readable history so players and observers can see results
+    match /game_history/{roundId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // User profile and balances
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Transactions log
+    match /transactions/{txId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // System configuration
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

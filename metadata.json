@@ -1,0 +1,6 @@
+{
+  "name": "Teen Patti Royal",
+  "description": "A luxury 3-card Teen Patti multiplayer casino table featuring A/B/C betting spots, royal baroque velvet armchairs, synchronized countdown timer, live chips, game history, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
