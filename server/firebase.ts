@@ -289,3 +289,95 @@ export async function setFirebaseAdminConfig(newConfig: any) {
     handleFirestoreError(err, OperationType.WRITE, 'system_config/main');
   }
 }
+
+// Withdrawal requests persistence
+export async function saveFirebaseWithdrawal(withdrawal: any) {
+  const online = await isFirestoreOnline();
+  if (!online) return;
+
+  try {
+    const wDoc = doc(db, 'withdrawals', withdrawal.id);
+    await setDoc(wDoc, {
+      ...withdrawal,
+      createdAt: withdrawal.createdAt || new Date().toISOString(),
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `withdrawals/${withdrawal.id}`);
+  }
+}
+
+export async function getFirebaseWithdrawals(): Promise<any[]> {
+  const online = await isFirestoreOnline();
+  if (!online) return [];
+
+  try {
+    const wCol = collection(db, 'withdrawals');
+    const snapshot = await getDocs(wCol);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'withdrawals');
+    return [];
+  }
+}
+
+export async function updateFirebaseWithdrawal(id: string, updateData: any) {
+  const online = await isFirestoreOnline();
+  if (!online) return;
+
+  try {
+    const wDoc = doc(db, 'withdrawals', id);
+    await setDoc(wDoc, {
+      ...updateData,
+      reviewedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `withdrawals/${id}`);
+  }
+}
+
+// Chat Messages persistence
+export async function saveFirebaseChatMessage(chatMsg: any) {
+  const online = await isFirestoreOnline();
+  if (!online) return;
+
+  try {
+    const cDoc = doc(db, 'chat_messages', chatMsg.id);
+    await setDoc(cDoc, {
+      ...chatMsg,
+      savedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `chat_messages/${chatMsg.id}`);
+  }
+}
+
+export async function getFirebaseChatMessages(limitCount = 1000): Promise<any[]> {
+  const online = await isFirestoreOnline();
+  if (!online) return [];
+
+  try {
+    const cCol = collection(db, 'chat_messages');
+    const q = query(cCol, orderBy('timestamp', 'desc'), limit(limitCount));
+    const snapshot = await getDocs(q);
+    const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    return messages.reverse(); // Return oldest to newest to display correctly
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'chat_messages');
+    return [];
+  }
+}
+
+export async function clearFirebaseChatMessages() {
+  const online = await isFirestoreOnline();
+  if (!online) return;
+
+  try {
+    const cCol = collection(db, 'chat_messages');
+    const snapshot = await getDocs(cCol);
+    for (const d of snapshot.docs) {
+      await deleteDoc(d.ref);
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, 'chat_messages');
+  }
+}

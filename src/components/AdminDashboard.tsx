@@ -22,13 +22,18 @@ import {
   AlertTriangle,
   CheckCircle2,
   Percent,
-  Sliders
+  Sliders,
+  DollarSign,
+  Copy,
+  Check,
+  ArrowDownToLine
 } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
 import { AdminOddsControl } from './AdminOddsControl';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { generateUniqueCustomId, config as firebaseConfig } from '../lib/firebase';
+import { WithdrawalRequest } from '../types/game';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -44,7 +49,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   history,
 }) => {
   const { t, isRTL, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'odds' | 'users' | 'overview' | 'settings' | 'players' | 'transactions' | 'history'>('odds');
+  const [activeTab, setActiveTab] = useState<'odds' | 'users' | 'withdrawals' | 'overview' | 'settings' | 'players' | 'transactions' | 'history'>('odds');
   const [config, setConfig] = useState<AdminConfig>({
     isGameEnabled: true,
     defaultChips: [50, 500, 2000, 10000],
@@ -53,6 +58,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     maxBet: 50000,
     autoFillBots: true,
     defaultPlayerBalance: 0,
+    coinsPerUsdRecharge: 1000,
+    coinsPerUsdWithdraw: 1200,
+    minWithdrawCoins: 1000,
     globalWinRate: 40,
     houseMode: 'casino_standard',
     gameWinRates: {
@@ -89,6 +97,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     instructions: 'Connected to Cloud Firestore'
   });
 
+  // Withdrawals management state
+  const [withdrawalsList, setWithdrawalsList] = useState<WithdrawalRequest[]>([]);
+  const [withdrawalFilter, setWithdrawalFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [rechargeRate, setRechargeRate] = useState<number>(1000);
+  const [withdrawRate, setWithdrawRate] = useState<number>(1200);
+  const [minWithdraw, setMinWithdraw] = useState<number>(1000);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [rateSaved, setRateSaved] = useState(false);
+
   // Users management state
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [userSearch, setUserSearch] = useState('');
@@ -116,6 +133,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     tablesReset: number;
     activeSockets: number;
   } | null>(null);
+  const [isClearingChat, setIsClearingChat] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -214,6 +232,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             if (data.config.houseMode) {
               setHouseMode(data.config.houseMode);
             }
+            if (data.config.coinsPerUsdRecharge) {
+              setRechargeRate(data.config.coinsPerUsdRecharge);
+            }
+            if (data.config.coinsPerUsdWithdraw) {
+              setWithdrawRate(data.config.coinsPerUsdWithdraw);
+            }
+            if (data.config.minWithdrawCoins) {
+              setMinWithdraw(data.config.minWithdrawCoins);
+            }
           }
           if (data.recentTransactions) {
             setTransactions(data.recentTransactions);
@@ -231,6 +258,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       console.warn('Failed to fetch admin overview:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchWithdrawals = async () => {
+    try {
+      const res = await fetch('/api/admin/withdrawals');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.withdrawals) {
+          setWithdrawalsList(data.withdrawals);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch withdrawals:', err);
+    }
+  };
+
+  const handleReviewWithdrawal = async (withdrawalId: string, action: 'approve' | 'reject', notes?: string) => {
+    setActionInProgress(withdrawalId);
+    try {
+      const res = await fetch('/api/admin/withdrawals/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ withdrawalId, action, notes }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWithdrawalsList((prev) => prev.map((w) => (w.id === withdrawalId ? data.withdrawal : w)));
+        setActionToast({
+          msg: action === 'approve' ? 'تمت الموافقة على السحب وتأكيد التحويل بنجاح! ✅' : 'تم رفض السحب واسترجاع الكوينز إلى رصيد اللاعب بنجاح! 🔄',
+          type: 'success',
+        });
+        fetchUsersList();
+        setTimeout(() => setActionToast(null), 4000);
+      } else {
+        setActionToast({ msg: 'فشل تعديل حالة السحب', type: 'error' });
+        setTimeout(() => setActionToast(null), 3000);
+      }
+    } catch {
+      setActionToast({ msg: 'حدث خطأ أثناء مراجعة السحب', type: 'error' });
+      setTimeout(() => setActionToast(null), 3000);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleSaveExchangeRates = async () => {
+    setRateSaved(false);
+    try {
+      const updatedConfig: Partial<AdminConfig> = {
+        ...config,
+        coinsPerUsdRecharge: Number(rechargeRate) || 1000,
+        coinsPerUsdWithdraw: Number(withdrawRate) || 1200,
+        minWithdrawCoins: Number(minWithdraw) || 1000,
+      };
+
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: updatedConfig }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setConfig(data.config);
+        setRateSaved(true);
+        setActionToast({
+          msg: 'تم حفظ أسعار الصرف (الشحن والسحب) والحد الأدنى بنجاح في السيرفر! 💾',
+          type: 'success',
+        });
+        setTimeout(() => {
+          setRateSaved(false);
+          setActionToast(null);
+        }, 4000);
+      }
+    } catch {
+      setActionToast({ msg: 'فشل حفظ أسعار الصرف', type: 'error' });
+      setTimeout(() => setActionToast(null), 3000);
     }
   };
 
@@ -389,6 +494,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleClearChat = async () => {
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف جميع رسائل الدردشة العامة نهائياً؟' : 'Are you sure you want to permanently clear the global chat?')) return;
+    setIsClearingChat(true);
+    try {
+      const res = await fetch('/api/admin/clear-chat', {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setActionToast({ msg: language === 'ar' ? 'تم حذف الدردشة بنجاح' : 'Chat cleared successfully', type: 'success' });
+        setTimeout(() => setActionToast(null), 3000);
+      }
+    } catch (err) {
+      setActionToast({ msg: language === 'ar' ? 'فشل حذف الدردشة' : 'Failed to clear chat', type: 'error' });
+      setTimeout(() => setActionToast(null), 3000);
+    } finally {
+      setIsClearingChat(false);
+    }
+  };
+
   const handleExecuteServerCleanup = async () => {
     setIsCleaningServer(true);
     try {
@@ -478,22 +602,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
             <div>
               <h2 className="text-sm xs:text-lg font-black text-white flex items-center gap-1.5 xs:gap-2">
-                <span>Admin Control Dashboard</span>
+                <span>لوحة التحكم والإدارة العامة (Admin Control)</span>
                 <span className="text-[9px] xs:text-[10px] uppercase font-bold tracking-wider px-1.5 xs:px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                  Live Management
+                  مباشر ومزامن
                 </span>
               </h2>
               <p className="text-[10px] xs:text-xs text-slate-400 line-clamp-1">
-                Full game control: toggle game, table rules, bets, transactions, and players
+                التحكم الكامل: نسب المكسب والخسارة، شحن المستخدمين، سحب الأرباح، والوكالات
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
             <button
-              onClick={fetchAdminData}
+              onClick={() => {
+                fetchAdminData();
+                fetchUsersList();
+                fetchWithdrawals();
+              }}
               className="p-1.5 xs:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-              title="Refresh"
+              title="تحديث البيانات"
             >
               <RefreshCw className={`w-3.5 h-3.5 xs:w-4 xs:h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -501,6 +629,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               id="btn-close-admin"
               onClick={onClose}
               className="p-1.5 xs:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              title="إغلاق اللوحة"
             >
               <X className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             </button>
@@ -510,13 +639,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Tab Navigation */}
         <div className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-6 pt-2 xs:pt-3 border-b border-slate-800 bg-slate-950/30 overflow-x-auto text-[11px] xs:text-xs" dir="rtl">
           {[
-            { id: 'odds', label: 'نسب المكسب والخسارة (RTP & Odds) 🎯', icon: Percent },
-            { id: 'users', label: 'إدارة وشحن المستخدمين (Users & Recharge)', icon: Users },
-            { id: 'overview', label: 'نظرة عامة (Overview)', icon: Activity },
-            { id: 'settings', label: 'إعدادات اللعبة والرهان', icon: Settings },
-            { id: 'players', label: 'اللاعبون النشطون', icon: Users },
-            { id: 'transactions', label: 'سجل المعاملات', icon: Coins },
-            { id: 'history', label: 'سجل الجولات', icon: FileText },
+            { id: 'odds', label: 'نسب المكسب والخسارة (RTP) 🎯', icon: Percent },
+            { id: 'users', label: 'المستخدمين ووكالات الشحن 👥', icon: Users },
+            { id: 'withdrawals', label: 'سحب الأرباح وأسعار الصرف 💵', icon: DollarSign },
+            { id: 'overview', label: 'نظرة عامة وإحصائيات 📊', icon: Activity },
+            { id: 'settings', label: 'إعدادات اللعبة والرهان ⚙️', icon: Settings },
+            { id: 'players', label: 'اللاعبون النشطون الآن 🎮', icon: Users },
+            { id: 'transactions', label: 'سجل المعاملات والعمليات 🪙', icon: Coins },
+            { id: 'history', label: 'سجل الجولات والكروت 📜', icon: FileText },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -526,6 +656,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 onClick={() => {
                   setActiveTab(tab.id as any);
                   if (tab.id === 'users') fetchUsersList();
+                  if (tab.id === 'withdrawals') fetchWithdrawals();
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-bold transition-colors whitespace-nowrap ${
                   isActive
@@ -577,6 +708,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                  <button
+                    disabled={isClearingChat}
+                    onClick={handleClearChat}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isClearingChat ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    <span>{language === 'ar' ? 'حذف الدردشة' : 'Clear Chat'}</span>
+                  </button>
                   <button
                     disabled={actionInProgress === 'all-balances'}
                     onClick={handleZeroAllBalances}
@@ -698,23 +841,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     return (
                       <div
                         key={uId}
-                        className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 hover:border-amber-500/30 transition-all flex flex-col gap-3"
+                        className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 hover:border-amber-500/30 transition-all flex flex-col gap-3 select-text"
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           {/* User Profile Info */}
                           <div className="flex items-start sm:items-center gap-3.5">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-400 text-slate-950 font-black flex items-center justify-center text-lg shadow-md shrink-0">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-400 text-slate-950 font-black flex items-center justify-center text-lg shadow-md shrink-0 select-none">
                               {u.displayName ? u.displayName[0].toUpperCase() : 'U'}
                             </div>
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="font-bold text-sm text-white">
+                                <h4 className="font-bold text-sm text-white select-text">
                                   {u.displayName || 'لاعب'}
                                 </h4>
                                 {/* Unique VIP ID Badge */}
-                                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-[11px] flex items-center gap-1">
+                                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-[11px] flex items-center gap-1.5 select-all">
                                   <Sparkles className="w-3 h-3 text-amber-400" />
                                   <span>{u.customId || `ROYAL-${uId.slice(-6).toUpperCase()}`}</span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(u.customId || uId);
+                                      setCopiedField(`u-cid-${uId}`);
+                                      setTimeout(() => setCopiedField(null), 2000);
+                                    }}
+                                    className="p-0.5 hover:text-white cursor-pointer"
+                                    title="نسخ الآيدي المميز"
+                                  >
+                                    {copiedField === `u-cid-${uId}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  </button>
                                 </span>
                                 {/* Role Badge */}
                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
@@ -727,8 +881,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   {u.role === 'admin' ? '👑 مدير (Admin)' : u.role === 'agency' ? '🛡️ وكالة (Agency)' : '🎮 لاعب (Player)'}
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-400 font-mono mt-0.5">{u.email || `${uId}@player.local`}</p>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <p className="text-xs text-slate-400 font-mono select-all">{u.email || `${uId}@player.local`}</p>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(u.email || uId);
+                                    setCopiedField(`u-em-${uId}`);
+                                    setTimeout(() => setCopiedField(null), 2000);
+                                  }}
+                                  className="p-0.5 text-slate-500 hover:text-slate-300 cursor-pointer"
+                                  title="نسخ البريد"
+                                >
+                                  {copiedField === `u-em-${uId}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 select-text">
                                 <span className="text-xs text-slate-400">الرصيد في قاعدة البيانات:</span>
                                 <span className="font-black text-amber-400 font-mono text-sm flex items-center gap-1">
                                   <Coins className="w-3.5 h-3.5 text-yellow-400" />
@@ -837,6 +1004,307 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <p className="text-xs">لا يوجد مستخدمون حالياً. عند تسجيل أي لاعب سيظهر هنا فوراً مع صلاحية المدير وشحن الرصيد.</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: WITHDRAWALS & EXCHANGE RATES */}
+          {activeTab === 'withdrawals' && (
+            <div className="space-y-5 select-text" dir="rtl">
+              {/* Card 1: Exchange Rates & Minimum Withdrawal Controls */}
+              <div className="p-5 rounded-3xl bg-slate-900/90 border border-amber-500/40 shadow-xl space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 flex items-center justify-center text-slate-950 font-black shadow-md">
+                      <DollarSign className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-sm text-white flex items-center gap-2">
+                        <span>إعدادات أسعار الصرف وسحب الأرباح</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          تحكم فوري
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        حدد كم كوينزة لكل 1 دولار عند الشحن والسحب، وحدد الحد الأدنى للسحب
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveExchangeRates}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    {rateSaved ? <Check className="w-4 h-4 text-slate-950" /> : <ArrowDownToLine className="w-4 h-4 text-slate-950" />}
+                    <span>{rateSaved ? 'تم الحفظ في السيرفر!' : 'حفظ أسعار الصرف'}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Recharge Rate */}
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <span>سعر الشحن (كوينز / 1$):</span>
+                      <span className="text-[11px] text-amber-400 font-mono">1$ USD =</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="10"
+                        value={rechargeRate}
+                        onChange={(e) => setRechargeRate(Number(e.target.value))}
+                        className="w-full py-2 px-3 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono font-bold text-white focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">
+                        كوينز
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      اللاعب الذي يدفع 10$ دولار يحصل على {(rechargeRate * 10).toLocaleString()} كوينز
+                    </p>
+                  </div>
+
+                  {/* Withdraw Rate */}
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <span>سعر سحب الأرباح (كوينز / 1$):</span>
+                      <span className="text-[11px] text-emerald-400 font-mono">1$ USD =</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="10"
+                        value={withdrawRate}
+                        onChange={(e) => setWithdrawRate(Number(e.target.value))}
+                        className="w-full py-2 px-3 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono font-bold text-white focus:outline-none focus:border-emerald-400"
+                      />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">
+                        كوينز
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      إذا سحب اللاعب {(withdrawRate * 10).toLocaleString()} كوينز، يستلم 10.00$ دولار
+                    </p>
+                  </div>
+
+                  {/* Min Withdrawal Amount */}
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <span>الحد الأدنى لطلب السحب:</span>
+                      <span className="text-[11px] text-cyan-400 font-mono">Min Coins</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="100"
+                        value={minWithdraw}
+                        onChange={(e) => setMinWithdraw(Number(e.target.value))}
+                        className="w-full py-2 px-3 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono font-bold text-white focus:outline-none focus:border-cyan-400"
+                      />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">
+                        كوينز
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      أقل قيمة يمكن للاعب طلب سحبها ({(minWithdraw / (withdrawRate || 1)).toFixed(2)}$ دولار)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Withdrawal Requests Table & Review */}
+              <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="font-black text-sm text-white flex items-center gap-2">
+                      <span>طلبات سحب الأرباح المقدمة من اللاعبين</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-300">
+                        {withdrawalsList.length} طلب
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      راجع بيانات المحافظ والحسابات وحوّل الأموال، ثم وافق على الطلب أو ارفضه لاسترجاع الكوينز
+                    </p>
+                  </div>
+
+                  {/* Filter tabs */}
+                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                    {[
+                      { id: 'all', label: 'الكل' },
+                      { id: 'pending', label: '⏳ معلقة' },
+                      { id: 'approved', label: '✅ مقبولة' },
+                      { id: 'rejected', label: '❌ مرفوضة' },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setWithdrawalFilter(f.id as any)}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          withdrawalFilter === f.id
+                            ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* List of withdrawal requests */}
+                <div className="space-y-3">
+                  {withdrawalsList
+                    .filter((w) => {
+                      if (withdrawalFilter === 'all') return true;
+                      return w.status === withdrawalFilter;
+                    })
+                    .map((w) => {
+                      const isPending = w.status === 'pending';
+                      const isApproved = w.status === 'approved';
+                      const isRejected = w.status === 'rejected';
+
+                      return (
+                        <div
+                          key={w.id}
+                          className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-sm text-white">
+                                  {w.recipientName || w.userName}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs flex items-center gap-1">
+                                  <span>ID: {w.customId}</span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(w.customId);
+                                      setCopiedField(`cid-${w.id}`);
+                                      setTimeout(() => setCopiedField(null), 2000);
+                                    }}
+                                    className="p-0.5 hover:text-white cursor-pointer"
+                                    title="نسخ الآيدي"
+                                  >
+                                    {copiedField === `cid-${w.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                </span>
+
+                                <span className="text-xs text-slate-400 font-mono">
+                                  {w.userEmail}
+                                </span>
+
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                  isApproved
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                    : isRejected
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                }`}>
+                                  {isApproved ? '✅ تم التحويل' : isRejected ? '❌ تم الرفض واسترجاع الكوينز' : '⏳ قيد المراجعة'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-3 mt-1 text-xs">
+                                <span className="text-slate-400 font-mono">طلب #{w.id}</span>
+                                <span className="text-slate-500">•</span>
+                                <span className="text-slate-400">
+                                  {new Date(w.createdAt).toLocaleString('ar-EG')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Financial Amount */}
+                            <div className="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 shrink-0">
+                              <div>
+                                <span className="text-[10px] text-slate-400 block">المبلغ بالكوينز:</span>
+                                <span className="font-mono font-black text-amber-300 text-sm">
+                                  {w.coinsAmount.toLocaleString()} 🪙
+                                </span>
+                              </div>
+                              <div className="h-7 w-px bg-slate-800" />
+                              <div>
+                                <span className="text-[10px] text-slate-400 block">المبلغ المستحق نقداً:</span>
+                                <span className="font-mono font-black text-emerald-400 text-base">
+                                  ${w.usdAmount} USD
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Payment details with quick copy button */}
+                          <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-400 font-bold">طريقة الاستلام:</span>
+                              <span className="text-amber-300 font-bold">{w.paymentMethod}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
+                              <span className="text-slate-400 font-bold">رقم الحساب / المحفظة:</span>
+                              <span className="font-mono text-white select-all font-bold">
+                                {w.accountDetails}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(w.accountDetails);
+                                  setCopiedField(`acc-${w.id}`);
+                                  setTimeout(() => setCopiedField(null), 2000);
+                                }}
+                                className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer transition-colors"
+                                title="نسخ رقم الحساب"
+                              >
+                                {copiedField === `acc-${w.id}` ? (
+                                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
+                                    <Check className="w-3 h-3" /> تم النسخ
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-slate-300 flex items-center gap-0.5">
+                                    <Copy className="w-3 h-3" /> نسخ
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Review Action Buttons if Pending */}
+                          {isPending && (
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+                              <button
+                                disabled={actionInProgress === w.id}
+                                onClick={() => handleReviewWithdrawal(w.id, 'reject', 'تم رفض الطلب واسترجاع الكوينز إلى رصيدك')}
+                                className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:text-rose-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                              >
+                                <span>❌ رفض واسترجاع الكوينز</span>
+                              </button>
+
+                              <button
+                                disabled={actionInProgress === w.id}
+                                onClick={() => handleReviewWithdrawal(w.id, 'approve', 'تم التحويل بنجاح')}
+                                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 text-slate-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>✅ موافقة وتأكيد التحويل</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {w.notes && (
+                            <p className="text-[11px] text-slate-400 italic">
+                              ملاحظة: {w.notes}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                  {withdrawalsList.length === 0 && (
+                    <div className="py-12 text-center text-slate-500 bg-slate-950/40 rounded-2xl border border-dashed border-slate-800">
+                      <ArrowDownToLine className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                      <p className="text-xs font-bold">لا توجد أي طلبات سحب حتى الآن</p>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        ستظهر هنا طلبات السحب التي يرسلها اللاعبون من حساباتهم بمجرد تقديمها
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

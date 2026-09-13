@@ -63,6 +63,39 @@
         "defaultPlayerBalance": { "type": "number" }
       },
       "required": ["isGameEnabled", "minBet", "maxBet"]
+    },
+    "WithdrawalRequest": {
+      "title": "WithdrawalRequest",
+      "description": "User withdrawal of casino profits",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "customId": { "type": "string" },
+        "userName": { "type": "string" },
+        "coinsAmount": { "type": "number" },
+        "usdAmount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "accountDetails": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "coinsAmount", "usdAmount", "paymentMethod", "accountDetails", "status"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Real-time user chat and gift exchange",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "gift", "system"] },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "senderId", "senderName", "content", "type", "timestamp"]
     }
   },
   "firestore": {
@@ -77,6 +110,14 @@
     "/transactions/{txId}": {
       "schema": "Transaction",
       "description": "Stores immutable financial transactions and bet logs"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "WithdrawalRequest",
+      "description": "Stores user withdrawal requests"
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Stores chat messages and gift events"
     },
     "/system_config/{configId}": {
       "schema": "GameSettings",

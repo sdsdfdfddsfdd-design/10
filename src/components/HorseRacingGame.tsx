@@ -200,9 +200,10 @@ export const HorseRacingGame: React.FC<HorseRacingGameProps> = ({
     // Check if player placed bets
     let userFavoriteHorseId: number | null = null;
     let maxBet = 0;
-    Object.entries(bets).forEach(([hId, amt]) => {
-      if (amt > maxBet) {
-        maxBet = amt;
+    Object.entries(bets).forEach(([hId, val]) => {
+      const numVal = Number(val);
+      if (numVal > maxBet) {
+        maxBet = numVal;
         userFavoriteHorseId = Number(hId);
       }
     });

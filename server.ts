@@ -352,7 +352,89 @@ app.post('/api/user/sync-balance', async (req, res) => {
     // offline fallback
   }
 
+  gameManager.notifyUserBalance(userId, newBalance);
   res.json({ success: true, balance: newBalance });
+});
+
+// User Withdrawal Endpoint
+app.post('/api/user/withdraw', async (req, res) => {
+  const { userId, customId, userName, userEmail, coinsAmount, paymentMethod, accountDetails, recipientName } = req.body;
+  if (!userId || !coinsAmount || !paymentMethod || !accountDetails) {
+    res.status(400).json({ error: 'Missing required withdrawal fields' });
+    return;
+  }
+  const result = gameManager.createWithdrawalRequest({
+    userId,
+    customId,
+    userName,
+    userEmail,
+    coinsAmount: Number(coinsAmount),
+    paymentMethod,
+    accountDetails,
+    recipientName,
+  });
+  if (!result.success) {
+    res.status(400).json({ error: result.message });
+    return;
+  }
+  res.json({ success: true, withdrawal: result.withdrawal, newBalance: result.newBalance });
+});
+
+// Get User Withdrawals History
+app.get('/api/user/withdrawals/:userId', (req, res) => {
+  const { userId } = req.params;
+  const userWithdrawals = Array.from(gameManager.withdrawals.values())
+    .filter((w) => w.userId === userId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json({ withdrawals: userWithdrawals });
+});
+
+// Admin Withdrawals List
+app.get('/api/admin/withdrawals', (req, res) => {
+  const allWithdrawals = Array.from(gameManager.withdrawals.values())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json({ withdrawals: allWithdrawals });
+});
+
+// Admin Review Withdrawal (Approve or Reject & Refund)
+app.post('/api/admin/withdrawals/review', (req, res) => {
+  const { withdrawalId, action, notes } = req.body;
+  if (!withdrawalId || (action !== 'approve' && action !== 'reject')) {
+    res.status(400).json({ error: 'Valid withdrawalId and action (approve/reject) are required' });
+    return;
+  }
+  const result = gameManager.reviewWithdrawal(withdrawalId, action, notes);
+  if (!result.success) {
+    res.status(400).json({ error: result.message });
+    return;
+  }
+  res.json({ success: true, withdrawal: result.withdrawal });
+});
+
+// Chat Messages API
+app.get('/api/chat/messages', (req, res) => {
+  res.json({ messages: gameManager.chatMessages });
+});
+
+// Admin Clear Chat
+app.post('/api/admin/clear-chat', (req, res) => {
+  gameManager.clearChat();
+  res.json({ success: true, message: 'Chat cleared successfully' });
+});
+
+// Send Gift API (with 35% commission directly to recipient)
+app.post('/api/chat/send-gift', (req, res) => {
+  const { senderId, senderName, senderCustomId, recipientId, recipientName, gift } = req.body;
+  if (!senderId || !recipientId || !gift) {
+    res.status(400).json({ error: 'Missing gift information' });
+    return;
+  }
+  const result = gameManager.sendGift(senderId, senderName, senderCustomId, recipientId, recipientName, gift);
+  if (!result.success) {
+    res.status(400).json({ error: result.message });
+    return;
+  }
+  res.json({ success: true, senderBalance: result.senderBalance, recipientBonus: result.recipientBonus });
 });
 
 // API catch-all to prevent unmatched API requests from falling through to HTML index
@@ -433,6 +515,32 @@ wss.on('connection', (ws: WebSocket) => {
             balance: newBal,
           }));
           gameManager.broadcastTable(currentTableId);
+          break;
+        }
+
+        case 'CHAT_MESSAGE': {
+          const { senderId, senderName, senderCustomId, senderRole, content } = message;
+          if (content && String(content).trim()) {
+            const chatMsg = {
+              id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+              senderId: senderId || currentUserId,
+              senderCustomId: senderCustomId || senderId || 'User',
+              senderName: senderName || 'Player',
+              senderRole: senderRole || 'player',
+              content: String(content).trim().slice(0, 300),
+              type: 'text' as const,
+              timestamp: Date.now(),
+            };
+            gameManager.addChatMessage(chatMsg as any);
+          }
+          break;
+        }
+
+        case 'SEND_GIFT': {
+          const { senderId, senderName, senderCustomId, recipientId, recipientName, gift } = message;
+          if (senderId && recipientId && gift) {
+            gameManager.sendGift(senderId, senderName, senderCustomId, recipientId, recipientName, gift);
+          }
           break;
         }
 

@@ -30,6 +30,18 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Withdrawal requests
+    match /withdrawals/{withdrawalId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Chat messages
+    match /chat_messages/{messageId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // System configuration
     match /system_config/{configId} {
       allow read: if true;

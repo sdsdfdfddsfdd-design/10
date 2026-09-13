@@ -16,6 +16,8 @@ import { HorseRacingGame } from './components/HorseRacingGame';
 import { MinesGame } from './components/MinesGame';
 import { sound } from './lib/audio';
 import { GamingAppBackground } from './components/GamingAppBackground';
+import { WithdrawModal } from './components/WithdrawModal';
+import { ChatWidget } from './components/ChatWidget';
 import { 
   Volume2, 
   VolumeX, 
@@ -27,7 +29,8 @@ import {
   Sparkles,
   User as UserIcon,
   Coins,
-  Globe
+  Globe,
+  MessageSquare
 } from 'lucide-react';
 import jokerBg from './assets/images/joker_casino_bg_1789250446471.jpg';
 import { db, auth, onAuthStateChanged, logoutUser, getUserProfileFromFirestore } from './lib/firebase';
@@ -74,6 +77,8 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [isRechargeOpen, setIsRechargeOpen] = useState<boolean>(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState<boolean>(false);
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isAlertRecharge, setIsAlertRecharge] = useState<boolean>(false);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
   const [isRulesOpen, setIsRulesOpen] = useState<boolean>(false);
@@ -422,6 +427,7 @@ export default function App() {
             setIsAlertRecharge(false);
             setIsRechargeOpen(true);
           }}
+          onOpenWithdraw={() => setIsWithdrawOpen(true)}
           onOpenHistory={() => {
             fetchHistory();
             setIsHistoryOpen(true);
@@ -746,11 +752,39 @@ export default function App() {
         onClose={() => setIsRulesOpen(false)}
       />
 
+      <WithdrawModal
+        isOpen={isWithdrawOpen}
+        onClose={() => setIsWithdrawOpen(false)}
+        user={currentUserProfile}
+        userBalance={balance}
+        onBalanceUpdated={(newBal) => setBalance(newBal)}
+      />
+
       <AdminDashboard
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         tableState={table}
         history={history}
+      />
+
+      {/* Floating Chat Button */}
+      {!isChatOpen && (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+        >
+          <MessageSquare className="w-6 h-6" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-slate-950 animate-pulse"></span>
+        </button>
+      )}
+
+      {/* Real-time Global Chat and 35% Gift Commission Widget */}
+      <ChatWidget
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        user={currentUserProfile}
+        userBalance={balance}
+        onBalanceUpdated={(newBal) => setBalance(newBal)}
       />
     </div>
   );

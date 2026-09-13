@@ -8,7 +8,10 @@ import {
   SpotId, 
   TableSpot, 
   TableState, 
-  TransactionRecord 
+  TransactionRecord,
+  WithdrawalRequest,
+  ChatMessage,
+  GiftItem
 } from '../src/types/game.js';
 import { createDeck, evaluateThreeCardHand, shuffleDeck } from './deck.js';
 import { 
@@ -19,7 +22,13 @@ import {
   saveFirebaseTransaction, 
   getFirebaseGameHistory,
   getFirebaseAdminConfig,
-  setFirebaseAdminConfig 
+  setFirebaseAdminConfig,
+  saveFirebaseWithdrawal,
+  getFirebaseWithdrawals,
+  updateFirebaseWithdrawal,
+  saveFirebaseChatMessage,
+  getFirebaseChatMessages,
+  clearFirebaseChatMessages
 } from './firebase.js';
 
 export interface ClientConnection {
@@ -36,6 +45,8 @@ export class GameManager {
   public transactions: TransactionRecord[] = [];
   public userBalances: Map<string, number> = new Map();
   public connections: Map<string, ClientConnection> = new Map();
+  public withdrawals: Map<string, WithdrawalRequest> = new Map();
+  public chatMessages: ChatMessage[] = [];
   
   // Track all user bets per round: Map<userId, Record<SpotId, number>>
   private activeUserBets: Map<string, Record<SpotId, number>> = new Map();
@@ -56,6 +67,9 @@ export class GameManager {
     autoFillBots: true,
     defaultPlayerBalance: 0,
     whatsappNumber: '201000000000',
+    coinsPerUsdRecharge: 1000,
+    coinsPerUsdWithdraw: 1200,
+    minWithdrawCoins: 1000,
     globalWinRate: 40,
     houseMode: 'casino_standard',
     gameWinRates: {
@@ -90,6 +104,20 @@ export class GameManager {
       const savedConfig = await getFirebaseAdminConfig();
       if (savedConfig) {
         this.adminConfig = { ...this.adminConfig, ...savedConfig };
+      }
+
+      // Load withdrawals from Firestore
+      const dbWithdrawals = await getFirebaseWithdrawals();
+      if (dbWithdrawals && dbWithdrawals.length > 0) {
+        for (const w of dbWithdrawals) {
+          this.withdrawals.set(w.id, w as WithdrawalRequest);
+        }
+      }
+
+      // Load chat messages from Firestore
+      const dbChat = await getFirebaseChatMessages(1000);
+      if (dbChat && dbChat.length > 0) {
+        this.chatMessages = dbChat as ChatMessage[];
       }
     } catch (e) {
       console.error('Failed to initialize Firebase data:', e);
@@ -140,7 +168,247 @@ export class GameManager {
     const cleanId = userId.trim();
     const bal = await getFirebaseUserBalance(cleanId, 0);
     this.userBalances.set(cleanId, bal);
+    this.notifyUserBalance(cleanId, bal);
     return bal;
+  }
+
+  public notifyUserBalance(userId: string, balance: number) {
+    for (const conn of this.connections.values()) {
+      if (conn.userId === userId) {
+        conn.send(JSON.stringify({
+          type: 'BALANCE_UPDATED',
+          balance,
+        }));
+      }
+    }
+  }
+
+  public broadcastToAll(data: any) {
+    const raw = JSON.stringify(data);
+    for (const conn of this.connections.values()) {
+      conn.send(raw);
+    }
+  }
+
+  public addChatMessage(msg: ChatMessage) {
+    this.chatMessages.push(msg);
+    if (this.chatMessages.length > 1000) {
+      this.chatMessages.shift();
+    }
+    saveFirebaseChatMessage(msg).catch(console.error);
+    this.broadcastToAll({
+      type: 'CHAT_MESSAGE',
+      message: msg,
+    });
+  }
+
+  public clearChat() {
+    this.chatMessages = [];
+    clearFirebaseChatMessages().catch(console.error);
+    this.broadcastToAll({
+      type: 'CHAT_CLEARED'
+    });
+  }
+
+  public sendGift(
+    senderId: string,
+    senderName: string,
+    senderCustomId: string,
+    recipientId: string,
+    recipientName: string,
+    gift: GiftItem
+  ): { success: boolean; message?: string; senderBalance?: number; recipientBonus?: number } {
+    if (!senderId || !recipientId || !gift || gift.coins <= 0) {
+      return { success: false, message: 'Invalid gift request' };
+    }
+
+    const senderBal = this.getOrCreateUserBalance(senderId);
+    if (senderBal < gift.coins) {
+      return { success: false, message: 'رصيد الكوينز غير كافٍ لإرسال هذه الهدية' };
+    }
+
+    // 35% commission goes directly to recipient as coins!
+    const recipientBonus = Math.floor(gift.coins * 0.35);
+
+    const newSenderBal = senderBal - gift.coins;
+    const recipientBal = this.getOrCreateUserBalance(recipientId);
+    const newRecipientBal = recipientBal + recipientBonus;
+
+    this.userBalances.set(senderId, newSenderBal);
+    setFirebaseUserBalance(senderId, newSenderBal, senderName).catch(console.error);
+    this.notifyUserBalance(senderId, newSenderBal);
+
+    this.userBalances.set(recipientId, newRecipientBal);
+    setFirebaseUserBalance(recipientId, newRecipientBal, recipientName).catch(console.error);
+    this.notifyUserBalance(recipientId, newRecipientBal);
+
+    // Record transactions
+    this.recordTransaction({
+      id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      userId: senderId,
+      userName: senderName,
+      type: 'REFUND', // Or gift deduction
+      amount: -gift.coins,
+      balanceAfter: newSenderBal,
+      roundNumber: 0,
+      timestamp: Date.now(),
+      description: `Sent gift ${gift.name} (${gift.icon}) to ${recipientName}`,
+    });
+
+    this.recordTransaction({
+      id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      userId: recipientId,
+      userName: recipientName,
+      type: 'WIN', // Gift received
+      amount: recipientBonus,
+      balanceAfter: newRecipientBal,
+      roundNumber: 0,
+      timestamp: Date.now(),
+      description: `Received gift ${gift.name} from ${senderName} (+35% reward)`,
+    });
+
+    // Public announcement message in chat
+    const chatMsg: ChatMessage = {
+      id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      senderId,
+      senderCustomId: senderCustomId || senderId,
+      senderName,
+      senderRole: 'player',
+      content: `🎁 أرسل [${senderName}] هدية [${gift.name} ${gift.icon}] بقيمة ${gift.coins.toLocaleString()} كوينز إلى [${recipientName}]! حصل المستلم فوراً على +${recipientBonus.toLocaleString()} كوينز (35%) في رصيده.`,
+      type: 'gift',
+      gift: {
+        id: gift.id,
+        name: gift.name,
+        icon: gift.icon,
+        coins: gift.coins,
+        recipientId,
+        recipientName,
+        recipientCoinsReceived: recipientBonus,
+      },
+      timestamp: Date.now(),
+    };
+
+    this.addChatMessage(chatMsg);
+
+    return {
+      success: true,
+      senderBalance: newSenderBal,
+      recipientBonus,
+    };
+  }
+
+  public createWithdrawalRequest(data: {
+    userId: string;
+    customId: string;
+    userName: string;
+    userEmail: string;
+    coinsAmount: number;
+    paymentMethod: string;
+    accountDetails: string;
+    recipientName: string;
+  }): { success: boolean; message?: string; withdrawal?: WithdrawalRequest; newBalance?: number } {
+    const { userId, customId, userName, userEmail, coinsAmount, paymentMethod, accountDetails, recipientName } = data;
+    const minCoins = this.adminConfig.minWithdrawCoins || 1000;
+
+    if (!userId || !coinsAmount || coinsAmount < minCoins) {
+      return { success: false, message: `الحد الأدنى للسحب هو ${minCoins.toLocaleString()} كوينز` };
+    }
+
+    const currentBal = this.getOrCreateUserBalance(userId);
+    if (currentBal < coinsAmount) {
+      return { success: false, message: 'رصيد الكوينز الحالي غير كافٍ لطلب هذا السحب' };
+    }
+
+    const rate = this.adminConfig.coinsPerUsdWithdraw || 1200;
+    const usdAmount = Number((coinsAmount / rate).toFixed(2));
+    const newBal = currentBal - coinsAmount;
+
+    this.userBalances.set(userId, newBal);
+    setFirebaseUserBalance(userId, newBal, userName).catch(console.error);
+    this.notifyUserBalance(userId, newBal);
+
+    const withdrawal: WithdrawalRequest = {
+      id: 'wd-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      userId,
+      customId: customId || userId,
+      userName: userName || 'User',
+      userEmail: userEmail || '',
+      coinsAmount,
+      usdAmount,
+      paymentMethod,
+      accountDetails,
+      recipientName: recipientName || userName,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.withdrawals.set(withdrawal.id, withdrawal);
+    saveFirebaseWithdrawal(withdrawal).catch(console.error);
+
+    this.recordTransaction({
+      id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      userId,
+      userName,
+      type: 'REFUND',
+      amount: -coinsAmount,
+      balanceAfter: newBal,
+      roundNumber: 0,
+      timestamp: Date.now(),
+      description: `Withdrawal request: ${coinsAmount} coins ($${usdAmount}) via ${paymentMethod}`,
+    });
+
+    return {
+      success: true,
+      withdrawal,
+      newBalance: newBal,
+    };
+  }
+
+  public reviewWithdrawal(
+    withdrawalId: string,
+    action: 'approve' | 'reject',
+    notes?: string
+  ): { success: boolean; message?: string; withdrawal?: WithdrawalRequest } {
+    const w = this.withdrawals.get(withdrawalId);
+    if (!w) {
+      return { success: false, message: 'طلب السحب غير موجود' };
+    }
+
+    if (action === 'approve') {
+      w.status = 'approved';
+      w.reviewedAt = new Date().toISOString();
+      w.notes = notes || 'تمت الموافقة والتحويل بنجاح';
+      this.withdrawals.set(w.id, w);
+      updateFirebaseWithdrawal(w.id, { status: 'approved', notes: w.notes, reviewedAt: w.reviewedAt });
+      return { success: true, withdrawal: w };
+    } else {
+      // Reject and REFUND the coins back to the user
+      w.status = 'rejected';
+      w.reviewedAt = new Date().toISOString();
+      w.notes = notes || 'تم رفض السحب واسترجاع الكوينز إلى رصيدك';
+      this.withdrawals.set(w.id, w);
+      updateFirebaseWithdrawal(w.id, { status: 'rejected', notes: w.notes, reviewedAt: w.reviewedAt });
+
+      const currentBal = this.getOrCreateUserBalance(w.userId);
+      const refundedBal = currentBal + w.coinsAmount;
+      this.userBalances.set(w.userId, refundedBal);
+      setFirebaseUserBalance(w.userId, refundedBal, w.userName).catch(console.error);
+      this.notifyUserBalance(w.userId, refundedBal);
+
+      this.recordTransaction({
+        id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        userId: w.userId,
+        userName: w.userName,
+        type: 'REFUND',
+        amount: w.coinsAmount,
+        balanceAfter: refundedBal,
+        roundNumber: 0,
+        timestamp: Date.now(),
+        description: `Refunded rejected withdrawal: ${w.coinsAmount} coins`,
+      });
+
+      return { success: true, withdrawal: w };
+    }
   }
 
   public getOrCreateUserBalance(userId: string): number {
