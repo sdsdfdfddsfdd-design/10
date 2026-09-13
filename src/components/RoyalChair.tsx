@@ -49,7 +49,7 @@ export const RoyalChair: React.FC<RoyalChairProps> = ({
     >
       <svg
         viewBox="0 0 160 200"
-        className="w-24 h-28 sm:w-28 sm:h-34 md:w-32 md:h-40 drop-shadow-xl select-none"
+        className="w-16 h-20 xs:w-20 xs:h-24 sm:w-24 sm:h-30 md:w-28 md:h-36 drop-shadow-xl select-none max-w-full"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >

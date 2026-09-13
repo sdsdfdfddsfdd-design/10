@@ -28,8 +28,8 @@ app.get('/api/firebase/status', (req, res) => {
 // Balance check & recharge
 app.get('/api/user/:id/balance', async (req, res) => {
   const userId = req.params.id;
-  if (!userId || !userId.trim() || userId === 'undefined' || userId === 'null') {
-    res.json({ balance: gameManager.adminConfig.defaultPlayerBalance });
+  if (!userId || !userId.trim() || userId === 'undefined' || userId === 'null' || userId.startsWith('usr_')) {
+    res.json({ balance: 0 });
     return;
   }
   const cleanId = userId.trim();
@@ -40,6 +40,24 @@ app.get('/api/user/:id/balance', async (req, res) => {
     const balance = gameManager.getOrCreateUserBalance(cleanId);
     res.json({ balance });
   }
+});
+
+// Live Game Odds & Win Rates endpoint for games
+app.get('/api/game/odds', (req, res) => {
+  res.json({
+    globalWinRate: gameManager.adminConfig.globalWinRate ?? 40,
+    gameWinRates: gameManager.adminConfig.gameWinRates ?? {
+      global: 40,
+      teenPatti: 40,
+      rocketCrash: 42,
+      mines: 45,
+      horseRacing: 38,
+      happyCake: 40,
+      luckySeven: 44,
+      dragonTiger: 45,
+    },
+    houseMode: gameManager.adminConfig.houseMode ?? 'casino_standard',
+  });
 });
 
 app.post('/api/user/:id/recharge', (req, res) => {
@@ -59,9 +77,16 @@ app.post('/api/user/:id/recharge', (req, res) => {
   res.json({ success: true, balance: newBalance });
 });
 
+// Helper IP endpoint
+app.get('/api/ip', (req, res) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+  res.json({ ip: Array.isArray(ip) ? ip[0] : String(ip).split(',')[0].trim() });
+});
+
 // Game history endpoint
-app.get('/api/game/history', (req, res) => {
-  res.json({ history: gameManager.history });
+app.get(['/api/game/history', '/api/game/history/'], (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json({ history: gameManager.history || [] });
 });
 
 // Transaction records endpoint
@@ -241,7 +266,7 @@ app.post('/api/user/sync-profile', async (req, res) => {
   if (typeof balance === 'number') {
     gameManager.userBalances.set(userId, balance);
   } else if (!gameManager.userBalances.has(userId)) {
-    gameManager.userBalances.set(userId, 10000);
+    gameManager.userBalances.set(userId, 0);
   }
 
   try {
@@ -268,6 +293,71 @@ app.post('/api/user/sync-profile', async (req, res) => {
       balance: gameManager.getOrCreateUserBalance(userId),
     }
   });
+});
+
+// Admin endpoint: Zero out all balances (removes fake/virtual initial coins)
+app.post('/api/admin/zero-all-balances', async (req, res) => {
+  let count = 0;
+  for (const userId of gameManager.userBalances.keys()) {
+    gameManager.userBalances.set(userId, 0);
+    try {
+      await setFirebaseUserBalance(userId, 0);
+    } catch {
+      // offline fallback
+    }
+    count++;
+  }
+
+  // Also zero out cloud users from Firestore
+  try {
+    const allUsers = await getAllFirebaseUsers();
+    for (const u of allUsers) {
+      const uid = u.userId || u.id;
+      if (uid) {
+        gameManager.userBalances.set(uid, 0);
+        await setFirebaseUserBalance(uid, 0);
+        count++;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  res.json({ success: true, message: 'All user balances zeroed to 0', count });
+});
+
+// Sync balance endpoint for games (Happy Cake, Teen Patti, etc.)
+app.post('/api/user/sync-balance', async (req, res) => {
+  const { userId, delta, currentBalance } = req.body;
+  if (!userId) {
+    res.status(400).json({ error: 'Missing userId' });
+    return;
+  }
+  let newBalance: number;
+  if (typeof delta === 'number') {
+    const existing = gameManager.getOrCreateUserBalance(userId);
+    newBalance = Math.max(0, existing + delta);
+    gameManager.userBalances.set(userId, newBalance);
+  } else if (typeof currentBalance === 'number') {
+    newBalance = Math.max(0, currentBalance);
+    gameManager.userBalances.set(userId, newBalance);
+  } else {
+    res.status(400).json({ error: 'Provide delta or currentBalance' });
+    return;
+  }
+
+  try {
+    await setFirebaseUserBalance(userId, newBalance);
+  } catch {
+    // offline fallback
+  }
+
+  res.json({ success: true, balance: newBalance });
+});
+
+// API catch-all to prevent unmatched API requests from falling through to HTML index
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: `API endpoint ${req.method} ${req.originalUrl || req.url} not found` });
 });
 
 // WebSocket real-time handling

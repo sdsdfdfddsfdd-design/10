@@ -54,7 +54,20 @@ export class GameManager {
     minBet: 100,
     maxBet: 500000,
     autoFillBots: true,
-    defaultPlayerBalance: 3250,
+    defaultPlayerBalance: 0,
+    whatsappNumber: '201000000000',
+    globalWinRate: 40,
+    houseMode: 'casino_standard',
+    gameWinRates: {
+      global: 40,
+      teenPatti: 40,
+      rocketCrash: 42,
+      mines: 45,
+      horseRacing: 38,
+      happyCake: 40,
+      luckySeven: 44,
+      dragonTiger: 45,
+    },
   };
 
   private timerInterval: NodeJS.Timeout | null = null;
@@ -121,26 +134,26 @@ export class GameManager {
   }
 
   public async loadUserBalanceFromFirebase(userId: string): Promise<number> {
-    if (!userId || typeof userId !== 'string' || !userId.trim()) {
-      return this.adminConfig.defaultPlayerBalance;
+    if (!userId || typeof userId !== 'string' || !userId.trim() || userId.startsWith('usr_')) {
+      return 0;
     }
     const cleanId = userId.trim();
-    const bal = await getFirebaseUserBalance(cleanId, this.adminConfig.defaultPlayerBalance);
+    const bal = await getFirebaseUserBalance(cleanId, 0);
     this.userBalances.set(cleanId, bal);
     return bal;
   }
 
   public getOrCreateUserBalance(userId: string): number {
-    if (!userId || typeof userId !== 'string' || !userId.trim()) {
-      return this.adminConfig.defaultPlayerBalance;
+    if (!userId || typeof userId !== 'string' || !userId.trim() || userId.startsWith('usr_')) {
+      return 0;
     }
     const cleanId = userId.trim();
     if (!this.userBalances.has(cleanId)) {
-      this.userBalances.set(cleanId, this.adminConfig.defaultPlayerBalance);
+      this.userBalances.set(cleanId, 0);
       // Asynchronously fetch and sync with Firestore only if a real user id exists
       this.loadUserBalanceFromFirebase(cleanId).catch(console.error);
     }
-    return this.userBalances.get(cleanId)!;
+    return this.userBalances.get(cleanId) ?? 0;
   }
 
   public rechargeBalance(userId: string, userName: string, amount: number): number {
@@ -392,9 +405,58 @@ export class GameManager {
         table.timerTotal = 4;
         table.timerRemaining = 4;
 
-        const evalA = evaluateThreeCardHand(this.secretSpotCards.A);
-        const evalB = evaluateThreeCardHand(this.secretSpotCards.B);
-        const evalC = evaluateThreeCardHand(this.secretSpotCards.C);
+        let evalA = evaluateThreeCardHand(this.secretSpotCards.A);
+        let evalB = evaluateThreeCardHand(this.secretSpotCards.B);
+        let evalC = evaluateThreeCardHand(this.secretSpotCards.C);
+
+        // Win/Loss Rate Odds Enforcement for Teen Patti
+        let totalUserBetA = 0;
+        let totalUserBetB = 0;
+        let totalUserBetC = 0;
+        for (const bets of this.activeUserBets.values()) {
+          totalUserBetA += bets.A || 0;
+          totalUserBetB += bets.B || 0;
+          totalUserBetC += bets.C || 0;
+        }
+        const totalUserBets = totalUserBetA + totalUserBetB + totalUserBetC;
+        const targetWinRate = this.adminConfig.gameWinRates?.teenPatti ?? this.adminConfig.globalWinRate ?? 40;
+
+        if (totalUserBets > 0 && this.adminConfig.houseMode !== 'fair') {
+          const isPlayerWinRoll = (Math.random() * 100) < targetWinRate;
+          const userFavoredSpot: SpotId = (totalUserBetA >= totalUserBetB && totalUserBetA >= totalUserBetC) 
+            ? 'A' 
+            : (totalUserBetB >= totalUserBetC ? 'B' : 'C');
+          
+          const spots: SpotId[] = ['A', 'B', 'C'];
+          const zeroBetSpots = spots.filter(s => {
+            if (s === 'A') return totalUserBetA === 0;
+            if (s === 'B') return totalUserBetB === 0;
+            return totalUserBetC === 0;
+          });
+
+          const desiredWinner: SpotId = isPlayerWinRoll 
+            ? userFavoredSpot 
+            : (zeroBetSpots.length > 0 ? zeroBetSpots[Math.floor(Math.random() * zeroBetSpots.length)] : spots.filter(s => s !== userFavoredSpot)[0]);
+
+          // Find current strongest hand
+          const currentEvals: Record<SpotId, HandEvaluation> = { A: evalA, B: evalB, C: evalC };
+          const highestSpot = (['A', 'B', 'C'] as SpotId[]).sort((x, y) => currentEvals[y].score - currentEvals[x].score)[0];
+
+          if (highestSpot !== desiredWinner) {
+            // Swap cards so desiredWinner gets the highest hand
+            const tempCards = this.secretSpotCards[desiredWinner];
+            this.secretSpotCards[desiredWinner] = this.secretSpotCards[highestSpot];
+            this.secretSpotCards[highestSpot] = tempCards;
+
+            evalA = evaluateThreeCardHand(this.secretSpotCards.A);
+            evalB = evaluateThreeCardHand(this.secretSpotCards.B);
+            evalC = evaluateThreeCardHand(this.secretSpotCards.C);
+          }
+        }
+
+        table.spots.A.cards = this.secretSpotCards.A;
+        table.spots.B.cards = this.secretSpotCards.B;
+        table.spots.C.cards = this.secretSpotCards.C;
 
         table.spots.A.evaluation = evalA;
         table.spots.B.evaluation = evalB;

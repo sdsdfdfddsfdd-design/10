@@ -103,6 +103,17 @@ export interface TransactionRecord {
   description: string;
 }
 
+export interface GameWinRates {
+  global: number;        // Global Player Win Rate % (0-100)
+  teenPatti: number;     // 0 - 100
+  rocketCrash: number;   // 0 - 100
+  mines: number;         // 0 - 100
+  horseRacing: number;   // 0 - 100
+  happyCake: number;     // 0 - 100
+  luckySeven: number;    // 0 - 100
+  dragonTiger: number;   // 0 - 100
+}
+
 export interface AdminConfig {
   isGameEnabled: boolean;
   defaultChips: number[];
@@ -111,6 +122,11 @@ export interface AdminConfig {
   maxBet: number;
   autoFillBots: boolean;
   defaultPlayerBalance: number;
+  whatsappNumber?: string;
+  // Win / Loss rate controls
+  globalWinRate: number;
+  gameWinRates: GameWinRates;
+  houseMode: 'custom' | 'casino_standard' | 'high_profit' | 'promotional' | 'fair';
 }
 
 export interface UserProfile {

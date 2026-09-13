@@ -16,7 +16,7 @@ export const GoldPlayingCard: React.FC<GoldPlayingCardProps> = ({
 
   return (
     <div
-      className={`relative w-8 h-12 sm:w-10 sm:h-14 md:w-12 md:h-17 transition-transform duration-500 preserve-3d cursor-pointer ${
+      className={`relative w-7 h-10 xs:w-8 xs:h-12 sm:w-10 sm:h-14 md:w-12 md:h-16 transition-transform duration-500 preserve-3d cursor-pointer ${
         highlight ? 'scale-110 -translate-y-2 z-30' : 'hover:-translate-y-1'
       }`}
       style={{

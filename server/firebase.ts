@@ -102,7 +102,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 // User Balance in Firestore
-export async function getFirebaseUserBalance(userId: string, defaultBalance: number = 325): Promise<number> {
+export async function getFirebaseUserBalance(userId: string, defaultBalance: number = 0): Promise<number> {
   if (!userId || typeof userId !== 'string' || !userId.trim()) {
     return defaultBalance;
   }

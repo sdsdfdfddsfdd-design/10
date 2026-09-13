@@ -36,7 +36,7 @@ interface GameItem {
   id: string;
   titleAr: string;
   titleEn: string;
-  category: 'cards' | 'table' | 'live' | 'vip';
+  category: 'cards' | 'table' | 'live' | 'crash' | 'vip';
   categoryLabelAr: string;
   categoryLabelEn: string;
   descriptionAr: string;
@@ -68,6 +68,114 @@ interface GamesLobbyProps {
 
 const AVAILABLE_GAMES: GameItem[] = [
   {
+    id: 'rocket-crash',
+    titleAr: 'صاروخ الحظ (Rocket Crash 3D)',
+    titleEn: 'Rocket Crash 3D',
+    category: 'crash',
+    categoryLabelAr: 'ألعاب الصاروخ والسرعة • مباشر',
+    categoryLabelEn: 'Rocket & Crash • Live',
+    descriptionAr: 'صاروخ فضائي يصعد بمضاعفات أرباح تصاعدية حتى 100X! اسحب أرباحك بضغطة زر قبل لحظة الانفجار.',
+    descriptionEn: 'Ascending 3D space rocket with exponential multipliers up to 100X! Cash out before the crash explosion!',
+    minBet: 50,
+    maxBet: 50000,
+    activePlayers: 1420,
+    isLive: true,
+    badge: '🔥 HOT CRASH',
+    accentColor: 'border-rose-500/80 shadow-rose-500/25',
+    bgGradient: 'from-rose-950/50 via-purple-950/30 to-slate-900',
+    thumbnailIcon: '🚀',
+  },
+  {
+    id: 'mines',
+    titleAr: 'كاشف القنابل والألماس (Mines)',
+    titleEn: 'Mines & Gems',
+    category: 'table',
+    categoryLabelAr: 'ألعاب التوقع والألماس • استراتيجية',
+    categoryLabelEn: 'Strategy & Gems • Grid',
+    descriptionAr: 'شبكة 5x5 مليئة بالألماس اللامع والقنابل الخفية! اختر عدد القنابل واكشف الألماس لمضاعفة أرباحك.',
+    descriptionEn: 'Exciting 5x5 grid with glittering gems and hidden bombs! Choose your risk level and cash out anytime!',
+    minBet: 50,
+    maxBet: 50000,
+    activePlayers: 1180,
+    isLive: true,
+    badge: '💎 POPULAR',
+    accentColor: 'border-teal-500/80 shadow-teal-500/25',
+    bgGradient: 'from-teal-950/50 via-cyan-950/30 to-slate-900',
+    thumbnailIcon: '💣',
+  },
+  {
+    id: 'horse-racing',
+    titleAr: 'سباق الخيول الملكي (Royal Derby)',
+    titleEn: 'Royal Derby Horses',
+    category: 'crash',
+    categoryLabelAr: 'سباقات خيل حية • ديربي',
+    categoryLabelEn: 'Live Derby Races • Turf',
+    descriptionAr: 'مضمار سباق خيول عربي حي بـ 6 متسابقين وفرسان حقيقيين ومضاعفات تصل إلى 25X مع منصة التتويج والتعليق الصوتي.',
+    descriptionEn: 'Live Arabian turf horse race with 6 thoroughbreds, realistic race physics, odds up to 25X and podium honors.',
+    minBet: 50,
+    maxBet: 50000,
+    activePlayers: 940,
+    isLive: true,
+    badge: '🐎 DERBY LIVE',
+    accentColor: 'border-emerald-500/80 shadow-emerald-500/25',
+    bgGradient: 'from-emerald-950/50 via-teal-950/30 to-slate-900',
+    thumbnailIcon: '🏇',
+  },
+  {
+    id: 'happy-cake',
+    titleAr: 'عجلة الكعكة (Happy Cake Wheel)',
+    titleEn: 'Happy Cake Fruit Wheel',
+    category: 'live',
+    categoryLabelAr: 'عجلة الحظ المباشرة • فواكه',
+    categoryLabelEn: 'Live Fruit Wheel • Casino',
+    descriptionAr: 'عجلة فواكه حية ثابتة يدور حولها مؤشر حركي ذهبي يختار الفائز مع مضاعفات خيالية واحتفالات بصرية مميزة.',
+    descriptionEn: 'Live fruit wheel with a sweeping selector indicator around all fruits and festive multiplier celebrations.',
+    minBet: 50,
+    maxBet: 50000,
+    activePlayers: 860,
+    isLive: true,
+    badge: '🍰 LIVE WHEEL',
+    accentColor: 'border-pink-500/80 shadow-pink-500/25',
+    bgGradient: 'from-pink-950/50 via-rose-950/30 to-slate-900',
+    thumbnailIcon: '🎂',
+  },
+  {
+    id: 'lucky-7',
+    titleAr: 'السبعتين (7 Up 7 Down)',
+    titleEn: '7 Up 7 Down Dice',
+    category: 'table',
+    categoryLabelAr: 'ألعاب النرد الملكية • كلاسيك',
+    categoryLabelEn: 'Royal Dice Games • Classic',
+    descriptionAr: 'لعبة النرد الكلاسيكية الشهيرة! توقع مجموع النردين: أقل من 7، سبعة ذهبية 5X، أو أكثر من 7 على طاولة كازينو مخملية.',
+    descriptionEn: 'The famous classic dice game! Predict the total of two dice: 7 Down, Lucky 7 (5X), or 7 Up on luxury green felt.',
+    minBet: 50,
+    maxBet: 50000,
+    activePlayers: 780,
+    isLive: true,
+    badge: '🎲 DICE',
+    accentColor: 'border-amber-500/80 shadow-amber-500/25',
+    bgGradient: 'from-amber-950/50 via-yellow-950/30 to-slate-900',
+    thumbnailIcon: '🎲',
+  },
+  {
+    id: 'dragon-tiger',
+    titleAr: 'التنين المقاتل (Dragon Tiger)',
+    titleEn: 'Dragon Tiger Duel',
+    category: 'cards',
+    categoryLabelAr: 'مبارزة البطاقات • مباشر',
+    categoryLabelEn: 'Card Duel • Live',
+    descriptionAr: 'نزال أسطوري سريع ببطاقتين بين التنين والنمر! راهن على الطرف الفائز أو التعادل الملكي 8:1 مع كشف بطاقات دراماتيكي.',
+    descriptionEn: 'Legendary fast 2-card clash between Dragon and Tiger! Bet on the winner or Super Tie 8:1 with dramatic reveals.',
+    minBet: 50,
+    maxBet: 50000,
+    activePlayers: 920,
+    isLive: true,
+    badge: '🐉 VIP DUEL',
+    accentColor: 'border-cyan-500/80 shadow-cyan-500/25',
+    bgGradient: 'from-cyan-950/50 via-indigo-950/30 to-slate-900',
+    thumbnailIcon: '🐉',
+  },
+  {
     id: 'teen-patti',
     titleAr: 'تين باتي رويال (Teen Patti)',
     titleEn: 'Teen Patti Royal 3-Cards',
@@ -78,120 +186,12 @@ const AVAILABLE_GAMES: GameItem[] = [
     descriptionEn: 'Flagship 3-card Indian poker with 3 betting chairs (A, B, C), live automatic dealer and instant pot showdowns.',
     minBet: 50,
     maxBet: 50000,
-    activePlayers: 428,
+    activePlayers: 1560,
     isLive: true,
-    badge: 'LIVE NOW',
-    accentColor: 'border-amber-400/80 shadow-amber-500/20',
-    bgGradient: 'from-amber-950/40 via-yellow-950/20 to-slate-900',
+    badge: '👑 ROYAL VIP',
+    accentColor: 'border-amber-400/80 shadow-amber-500/25',
+    bgGradient: 'from-amber-950/50 via-yellow-950/30 to-slate-900',
     thumbnailIcon: '👑',
-  },
-  {
-    id: 'roulette-royale',
-    titleAr: 'روليت الملوك 3D (Roulette)',
-    titleEn: 'Roulette Royale 3D',
-    category: 'table',
-    categoryLabelAr: 'ألعاب الطاولة',
-    categoryLabelEn: 'Table Games',
-    descriptionAr: 'عجلة الروليت الأوروبية الكلاسيكية، رهان الأرقام المباشرة، الألوان (أحمر/أسود)، الفردي والزوجي مع فيزياء دوران واقعية.',
-    descriptionEn: 'European classic roulette wheel with inside/outside bets, red/black splits, and realistic 3D ball physics.',
-    minBet: 100,
-    maxBet: 100000,
-    activePlayers: 312,
-    isLive: false,
-    badge: 'COMING SOON',
-    accentColor: 'border-rose-500/40 shadow-rose-500/10',
-    bgGradient: 'from-rose-950/40 via-red-950/20 to-slate-900',
-    thumbnailIcon: '🎡',
-  },
-  {
-    id: 'andar-bahar',
-    titleAr: 'أندار باهار جولد (Andar Bahar)',
-    titleEn: 'Andar Bahar VIP Gold',
-    category: 'cards',
-    categoryLabelAr: 'ألعاب الورق',
-    categoryLabelEn: 'Card Games',
-    descriptionAr: 'لعبة الحظ والحدس الأسرع، خمن أين سيتطابق كرت الجوكر الملكي، في خانة أندار (الداخل) أم باهار (الخارج) بأرباح مضاعفة.',
-    descriptionEn: 'The traditional matching card showdown. Predict whether the matching card lands on Andar or Bahar for instant multipliers.',
-    minBet: 50,
-    maxBet: 25000,
-    activePlayers: 289,
-    isLive: false,
-    badge: 'COMING SOON',
-    accentColor: 'border-emerald-500/40 shadow-emerald-500/10',
-    bgGradient: 'from-emerald-950/40 via-teal-950/20 to-slate-900',
-    thumbnailIcon: '🎴',
-  },
-  {
-    id: 'dragon-tiger',
-    titleAr: 'دراجون ضد تايجر (Dragon vs Tiger)',
-    titleEn: 'Dragon vs Tiger Speed',
-    category: 'live',
-    categoryLabelAr: 'كازينو مباشر',
-    categoryLabelEn: 'Live Casino',
-    descriptionAr: 'مواجهة الكرتين الحاسمة في 15 ثانية، التنين ضد النمر مع خيار رهان التعادل الملكي Tie بنسبة ربح 8:1.',
-    descriptionEn: 'High-speed 2-card battle. Bet on Dragon, Tiger, or Suited Tie with lucrative 8:1 payout tables.',
-    minBet: 50,
-    maxBet: 50000,
-    activePlayers: 195,
-    isLive: false,
-    badge: 'COMING SOON',
-    accentColor: 'border-orange-500/40 shadow-orange-500/10',
-    bgGradient: 'from-orange-950/40 via-amber-950/20 to-slate-900',
-    thumbnailIcon: '🐉',
-  },
-  {
-    id: 'baccarat-vip',
-    titleAr: 'باكارات الملوك (Baccarat Squeeze)',
-    titleEn: 'Baccarat Squeeze VIP',
-    category: 'vip',
-    categoryLabelAr: 'غرف كبار الشخصيات',
-    categoryLabelEn: 'VIP High Roller',
-    descriptionAr: 'لعبة الأثرياء الكلاسيكية، لاعب ضد البنكر للوصول إلى مجموع 9 الساحر مع ميزة كشف البطاقات البطيء (Card Squeeze).',
-    descriptionEn: 'High-stakes VIP tables. Player vs Banker with standard 9-point rule and authentic Macau-style card squeeze mechanics.',
-    minBet: 500,
-    maxBet: 250000,
-    activePlayers: 140,
-    isLive: false,
-    badge: 'VIP ROOM',
-    accentColor: 'border-purple-500/40 shadow-purple-500/10',
-    bgGradient: 'from-purple-950/40 via-indigo-950/20 to-slate-900',
-    thumbnailIcon: '💎',
-  },
-  {
-    id: 'blackjack-21',
-    titleAr: 'بلاك جاك 21 الملكي (Blackjack)',
-    titleEn: 'Blackjack Royal 21',
-    category: 'cards',
-    categoryLabelAr: 'ألعاب الورق',
-    categoryLabelEn: 'Card Games',
-    descriptionAr: 'تحدي الرقم 21 الشهير، اهزم يد الموزع واطلب بطاقة أو توقف أو ضاعف رهانك أو قسّم الأزواج مع ميزة التأمين.',
-    descriptionEn: 'Beat the dealer to 21 without going bust. Features split hands, double down, and dealer stands on soft 17.',
-    minBet: 100,
-    maxBet: 75000,
-    activePlayers: 220,
-    isLive: false,
-    badge: 'COMING SOON',
-    accentColor: 'border-cyan-500/40 shadow-cyan-500/10',
-    bgGradient: 'from-blue-950/40 via-cyan-950/20 to-slate-900',
-    thumbnailIcon: '♠️',
-  },
-  {
-    id: 'texas-holdem',
-    titleAr: 'تكساس هولديم بوكر (Texas Hold\'em)',
-    titleEn: 'Texas Hold\'em Poker VIP',
-    category: 'vip',
-    categoryLabelAr: 'غرف كبار الشخصيات',
-    categoryLabelEn: 'VIP High Roller',
-    descriptionAr: 'بطولات بوكر كبار الشخصيات، جولتان سريتان و5 بطاقات مجتمعية (الفلوب، التيرن، الريفر) مع جوائز كبرى للفل هاوس والرويال فلاش.',
-    descriptionEn: 'Multi-table poker tournaments with community cards, full house and royal flush progressive jackpots.',
-    minBet: 250,
-    maxBet: 200000,
-    activePlayers: 175,
-    isLive: false,
-    badge: 'VIP ROOM',
-    accentColor: 'border-amber-500/40 shadow-amber-500/10',
-    bgGradient: 'from-yellow-950/40 via-amber-950/20 to-slate-900',
-    thumbnailIcon: '🃏',
   }
 ];
 
@@ -210,7 +210,7 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
   onSelectGame,
 }) => {
   const { t, isRTL, language, setLanguage } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'cards' | 'table' | 'live' | 'vip'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'crash' | 'cards' | 'table' | 'live'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [devNotice, setDevNotice] = useState<string | null>(null);
 
@@ -227,24 +227,53 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
   });
 
   const handleGameClick = (game: GameItem) => {
-    if (game.id === 'teen-patti') {
-      onSelectGame('teen-patti');
-    } else {
-      setDevNotice(language === 'ar' 
-        ? `لعبة "${game.titleAr}" قيد الترخيص والتجهيز وستنطلق قريباً جداً في التحديث القادم! يمكنك الاستمتاع الآن بلعبة تين باتي رويال المتاحة فورياً.`
-        : `"${game.titleEn}" is in final licensing and will launch in the next update! Enjoy our live Teen Patti Royal table now.`
-      );
-      setTimeout(() => setDevNotice(null), 5000);
+    if (!user) {
+      setDevNotice(language === 'ar' ? 'يرجى تسجيل الدخول أو إنشاء حساب للبدء باللعب وشحن الرصيد الفعلي (لا توجد كوينزات وهمية)' : 'Please login or create an account to start playing with real coins (No fake coins allowed)');
+      setTimeout(() => setDevNotice(null), 4000);
+      onOpenAuth();
+      return;
     }
+    onSelectGame(game.id);
   };
 
   return (
     <div 
-      className="w-full min-h-screen bg-[#080b11] text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950 pb-20 sm:pb-8"
+      className="relative w-full min-h-screen bg-[#060810]/95 text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950 pb-20 sm:pb-8"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      {/* 0. CYBER GAMING TICKER */}
+      <div className="w-full bg-slate-950 border-b border-cyan-500/20 px-3 py-1 text-[10px] text-slate-400 flex items-center justify-between overflow-hidden">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 text-emerald-400 font-mono font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>SERVERS: ONLINE</span>
+            </span>
+            <span className="hidden sm:inline text-slate-600">|</span>
+            <span className="hidden sm:inline text-cyan-400 font-mono">60 FPS ENGINE</span>
+            <span className="hidden md:inline text-slate-600">|</span>
+            <span className="hidden md:inline text-amber-400 font-mono">PROVABLY FAIR 🎯</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!user ? (
+              <button 
+                onClick={onOpenAuth}
+                className="text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
+              >
+                {language === 'ar' ? 'إنشاء حساب جديد وشحن الرصيد' : 'Create Account & Top-up'}
+              </button>
+            ) : (
+              <span className="text-slate-400 font-mono">
+                {language === 'ar' ? 'الوضع: لاعب معتمد VIP' : 'Status: VIP Verified Player'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 1. TOP STICKY MOBILE & DESKTOP HEADER */}
-      <header className="sticky top-0 z-40 w-full bg-[#0b0f19]/95 backdrop-blur-xl border-b border-amber-500/20 px-3 sm:px-6 py-2.5 shadow-xl transition-all">
+      <header className="sticky top-0 z-40 w-full bg-[#080c18]/95 backdrop-blur-xl border-b border-cyan-500/20 px-3 sm:px-6 py-2.5 shadow-2xl transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           
           {/* Brand Logo & Title */}
@@ -256,15 +285,15 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
             
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <h1 className="font-serif font-black text-sm sm:text-lg md:text-xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-500 tracking-wide leading-tight">
+                <h1 className="font-black text-sm sm:text-lg md:text-xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-500 tracking-wider leading-tight">
                   ROYAL CASINO
                 </h1>
                 <span className="text-[9px] font-mono font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  VIP
+                  GAMING PRO
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 hidden xs:block font-medium">
-                {language === 'ar' ? 'صالة الألعاب الملكية الكبرى' : 'Grand Royal Gaming Lounge'}
+                {language === 'ar' ? 'تطبيق وصالة الألعاب الملكية الكبرى' : 'Grand Royal Gaming Application'}
               </p>
             </div>
           </div>
@@ -273,24 +302,41 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             
             {/* Live Balance Chip & Fast Recharge */}
-            <div 
-              id="header-balance-chip"
-              className="flex items-center bg-slate-900/90 border border-amber-400/50 rounded-full pl-2 pr-1 sm:px-3 py-1 shadow-[0_2px_10px_rgba(245,158,11,0.15)] group"
-            >
-              <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0 mr-1 rtl:mr-0 rtl:ml-1 animate-pulse" />
-              <span className="font-black text-xs sm:text-sm text-amber-300 font-mono tracking-tight mr-1.5 rtl:mr-0 rtl:ml-1.5">
-                {userBalance.toLocaleString()}
-              </span>
-              <button
-                id="btn-lobby-recharge"
-                onClick={onOpenRecharge}
-                className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-[10px] sm:text-xs shadow-sm transition-transform active:scale-90 cursor-pointer flex items-center gap-0.5"
-                title={t.topUp}
+            {user ? (
+              <div 
+                id="header-balance-chip"
+                className="flex items-center bg-slate-900/90 border border-amber-400/50 rounded-full pl-2 pr-1 sm:px-3 py-1 shadow-[0_2px_10px_rgba(245,158,11,0.15)] group"
               >
-                <span>+</span>
-                <span className="hidden xs:inline">{t.topUp}</span>
+                <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0 mr-1 rtl:mr-0 rtl:ml-1 animate-pulse" />
+                <span className="font-black text-xs sm:text-sm text-amber-300 font-mono tracking-tight mr-1.5 rtl:mr-0 rtl:ml-1.5">
+                  {userBalance.toLocaleString()}
+                </span>
+                <button
+                  id="btn-lobby-recharge"
+                  onClick={onOpenRecharge}
+                  className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-[10px] sm:text-xs shadow-sm transition-transform active:scale-90 cursor-pointer flex items-center gap-0.5"
+                  title={t.topUp}
+                >
+                  <span>+</span>
+                  <span className="hidden xs:inline">{t.topUp}</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                id="header-guest-balance"
+                onClick={onOpenAuth}
+                className="flex items-center bg-slate-900/90 border border-slate-700 hover:border-amber-400/60 rounded-full px-2.5 sm:px-3 py-1 text-slate-400 cursor-pointer group transition-all"
+                title="الرصيد: 0 كوينز - انقر لإنشاء حساب وشحن الرصيد الفعلي"
+              >
+                <Coins className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 shrink-0 mr-1 rtl:mr-0 rtl:ml-1 transition-colors" />
+                <span className="font-mono text-xs text-slate-400 group-hover:text-amber-300 font-bold mr-1.5 rtl:mr-0 rtl:ml-1.5">
+                  0 🪙
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-amber-300 font-bold border border-slate-700">
+                  {language === 'ar' ? 'سجل للعب' : 'Login To Play'}
+                </span>
               </button>
-            </div>
+            )}
 
             {/* Language Switcher */}
             <button
@@ -384,110 +430,67 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
       )}
 
       {/* 3. HERO SHOWCASE & PROGRESSIVE JACKPOT (EYE-SAFE LUXURY DESIGN) */}
-      <div className="relative w-full overflow-hidden bg-gradient-to-b from-[#0e1422] via-[#090d16] to-[#080b11] py-6 sm:py-10 border-b border-amber-500/10">
-        <div className="absolute inset-0 bg-radial-vignette opacity-20 pointer-events-none" />
+      <div className="relative w-full bg-gradient-to-br from-indigo-950 via-[#0a0f1c] to-[#0d1222] py-8 sm:py-12 border-b border-indigo-500/10">
+        <div className="absolute inset-0 bg-radial-vignette opacity-30 pointer-events-none" />
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center">
           
-          {/* JackPot Ticker */}
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-950/80 via-yellow-950/60 to-amber-950/80 border border-amber-400/50 text-amber-200 font-mono font-bold text-xs sm:text-sm mb-3 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-            <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
-            <span className="text-amber-300 tracking-wide">{t.megaJackpot}:</span>
-            <span className="text-yellow-400 font-black tracking-wider text-sm sm:text-base">$1,458,920 🪙</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-400/30 text-indigo-200 font-mono font-bold text-xs sm:text-sm mb-4 shadow-lg shadow-indigo-500/10">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <span className="text-indigo-300 tracking-wide">{t.megaJackpot}:</span>
+            <span className="text-amber-400 font-black tracking-wider text-sm sm:text-base">$1,458,920 🪙</span>
           </div>
 
-          <h2 className="text-xl sm:text-3xl md:text-4xl font-black font-serif text-white tracking-tight leading-snug max-w-3xl">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black font-serif text-white tracking-tight leading-tight max-w-2xl">
             {language === 'ar' ? (
-              <span>كازينو الملوك الفاخر • متعة اللعب المباشر السحابي</span>
+              <span>كازينو الملوك الفاخر</span>
             ) : (
-              <span>Grand Royal Casino • Real-time Cloud Multiplayer</span>
+              <span>Grand Royal Casino</span>
             )}
           </h2>
 
-          <p className="mt-1.5 text-xs sm:text-sm text-slate-400 max-w-xl leading-relaxed">
+          <p className="mt-3 text-xs sm:text-sm text-slate-400 max-w-lg leading-relaxed">
             {language === 'ar'
-              ? 'صالة ألعاب متوافقة مع جميع أجهزة الآيفون والأندرويد بتصميم مريح للعين ونظام رصيد موحد.'
-              : 'Seamless gaming optimized for mobile, iOS and Android with eye-friendly dark luxury atmosphere.'}
+              ? 'صالة ألعاب راقية، متوافقة مع جميع الأجهزة بتصميم عصري وألعاب حية ومباشرة.'
+              : 'Premium gaming lounge, seamlessly optimized for all devices with modern design and live games.'}
           </p>
-
-          {/* Quick Stats Badges */}
-          <div className="flex items-center gap-2 sm:gap-4 mt-4 flex-wrap justify-center text-[11px] sm:text-xs text-slate-300">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span><strong>1,280+</strong> {t.activePlayers}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-              <Tv className="w-3.5 h-3.5 text-amber-400" />
-              <span>{language === 'ar' ? 'طاولات حية 24/7' : '24/7 Live Tables'}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-              <Shield className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{t.fairGaming}</span>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* 4. MAIN CONTAINER: FEATURED BANNER + CATEGORIES + GAME CARDS */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 w-full py-5 space-y-6">
+      {/* 4. MAIN CONTAINER: CATEGORIES + GAME CARDS */}
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 w-full py-6 space-y-6">
         
-        {/* FEATURED GAME SPOTLIGHT CARD (TEEN PATTI ROYAL) */}
-        <div 
-          onClick={() => onSelectGame('teen-patti')}
-          className="relative w-full rounded-3xl bg-gradient-to-r from-amber-950/60 via-yellow-950/40 to-slate-900/90 border-2 border-amber-400/80 p-4 sm:p-6 shadow-[0_10px_35px_rgba(245,158,11,0.25)] hover:border-amber-300 transition-all cursor-pointer group overflow-hidden"
-        >
-          {/* Ambient Glow Background */}
-          <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/10 rounded-full filter blur-3xl pointer-events-none" />
-          
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-            
-            {/* Left/Right Game Info */}
-            <div className="flex items-center gap-3.5 sm:gap-5">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 text-slate-950 flex items-center justify-center text-3xl shadow-lg shrink-0 group-hover:scale-105 transition-transform">
-                👑
+        {/* Guest Warning / Call to Action */}
+        {!user && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-purple-950/40 border border-amber-500/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <Crown className="w-5 h-5" />
               </div>
-              
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1 shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>{t.liveNow}</span>
+              <div>
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <span>{language === 'ar' ? 'أنت تتصفح كزائر • الرصيد: 0 كوينز' : 'Guest Mode • Balance: 0 Coins'}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    {language === 'ar' ? 'بدون كوينز وهمية' : 'No Fake Coins'}
                   </span>
-                  <span className="text-[11px] font-bold text-amber-300/80">
-                    {t.threeSeatsLive} (A, B, C)
-                  </span>
-                </div>
-
-                <h3 className="font-serif font-black text-lg sm:text-2xl text-white group-hover:text-amber-300 transition-colors">
-                  {language === 'ar' ? 'تين باتي رويال • طاولات الملوك الحية' : 'Teen Patti Royal • Live 3-Card Table'}
                 </h3>
-                
-                <p className="text-xs text-slate-300 max-w-xl line-clamp-2">
+                <p className="text-xs text-slate-300 mt-0.5">
                   {language === 'ar' 
-                    ? 'اللعبة الملكية الأكثر إثارة الآن، راهن على الكراسي A أو B أو C واستمتع بالموزع الآلي السحابي الفوري.'
-                    : 'The most popular Indian 3-card poker table. Bet on Chairs A, B, or C with synchronized live cloud dealer.'}
+                    ? 'لبدء تجربة الألعاب وشحن رصيدك الفعلي في حسابك، يرجى تسجيل الدخول أو إنشاء حساب VIP.' 
+                    : 'To start playing and recharge real coins to your profile, please register or login to VIP.'}
                 </p>
               </div>
             </div>
 
-            {/* Action CTA Button */}
-            <div className="flex items-center justify-between md:justify-end gap-3 pt-2 md:pt-0 border-t border-amber-500/20 md:border-none">
-              <div className="flex flex-col text-left md:text-right text-[11px] font-mono text-amber-200">
-                <span className="text-slate-400">{t.minMaxStake}:</span>
-                <strong className="text-amber-400 text-xs sm:text-sm">50 - 50,000 🪙</strong>
-              </div>
-
-              <button
-                id="btn-featured-play-now"
-                className="px-5 sm:px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs sm:text-sm shadow-xl flex items-center gap-2 transition-transform active:scale-95 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.5)]"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>{t.enterTable}</span>
-                <ChevronRight className="w-4 h-4 rtl:rotate-180" />
-              </button>
-            </div>
+            <button
+              onClick={onOpenAuth}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer shrink-0"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{language === 'ar' ? 'تسجيل الدخول / إنشاء حساب' : 'Login / Register'}</span>
+            </button>
           </div>
-        </div>
+        )}
 
         {/* 5. QUICK NAVIGATION & MODAL LAUNCHERS (RULES, RANK, HISTORY, TOPUP) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
@@ -558,11 +561,11 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
           {/* Horizontal Scroll Category Pills (Mobile Friendly) */}
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
             {[
-              { id: 'all', label: t.allGames, icon: Layers },
-              { id: 'cards', label: t.cardGames, icon: Award },
-              { id: 'table', label: t.tableGames, icon: Dices },
-              { id: 'live', label: t.liveCasino, icon: Tv },
-              { id: 'vip', label: t.vipRooms, icon: Crown },
+              { id: 'all', label: language === 'ar' ? 'جميع الألعاب' : 'All Games', icon: Layers },
+              { id: 'crash', label: language === 'ar' ? '🚀 الصاروخ والسرعة' : 'Rocket & Speed', icon: Flame },
+              { id: 'live', label: language === 'ar' ? '🎪 عجلة الحظ وكازينو' : 'Live Casino', icon: Tv },
+              { id: 'cards', label: language === 'ar' ? '🃏 ألعاب الورق' : 'Card Games', icon: Award },
+              { id: 'table', label: language === 'ar' ? '🎲 النرد والطاولة' : 'Table & Dice', icon: Dices },
             ].map((cat) => {
               const Icon = cat.icon;
               const isActive = selectedCategory === cat.id;
@@ -599,17 +602,11 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
         {/* 7. GAMES CATALOG CARDS GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {filteredGames.map((game) => {
-            const isFlagship = game.id === 'teen-patti';
-
             return (
               <div
                 key={game.id}
                 onClick={() => handleGameClick(game)}
-                className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col justify-between cursor-pointer ${
-                  isFlagship
-                    ? 'border-amber-400/80 bg-gradient-to-b from-amber-950/40 via-[#0d121f] to-[#0a0e17] shadow-[0_8px_25px_rgba(245,158,11,0.2)] hover:border-amber-300 hover:scale-[1.02]'
-                    : 'border-slate-800/90 bg-[#0d121f]/90 hover:border-slate-700 hover:bg-[#111728] hover:scale-[1.01]'
-                }`}
+                className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col justify-between cursor-pointer border-slate-800/90 bg-gradient-to-b ${game.bgGradient} hover:border-amber-400/80 hover:scale-[1.02] shadow-xl hover:shadow-2xl`}
               >
                 {/* Top Section */}
                 <div className="p-4 sm:p-5 pb-3">
@@ -623,7 +620,7 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
                     {game.isLive ? (
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1 shadow-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                        <span>{t.liveNow}</span>
+                        <span>{game.badge || t.liveNow}</span>
                       </span>
                     ) : (
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-800/90 text-slate-400 border border-slate-700 text-[10px] font-mono font-bold">
@@ -634,12 +631,12 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
 
                   {/* Icon & Title */}
                   <div className="flex items-start gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-700 border border-slate-600 flex items-center justify-center text-2xl shadow-md shrink-0 group-hover:scale-110 transition-transform">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 border-2 border-amber-500/40 flex items-center justify-center text-3xl shadow-lg shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                       {game.thumbnailIcon}
                     </div>
 
                     <div className="space-y-1">
-                      <h4 className="font-bold text-sm sm:text-base text-white group-hover:text-amber-300 transition-colors">
+                      <h4 className="font-black text-sm sm:text-base text-white group-hover:text-amber-300 transition-colors">
                         {language === 'ar' ? game.titleAr : game.titleEn}
                       </h4>
                       <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
@@ -650,26 +647,23 @@ export const GamesLobby: React.FC<GamesLobbyProps> = ({
                 </div>
 
                 {/* Footer Section: Stake & Action */}
-                <div className="p-4 pt-3 border-t border-slate-800/70 bg-black/20 flex items-center justify-between gap-2">
+                <div className="p-4 pt-3 border-t border-slate-800/70 bg-black/30 flex items-center justify-between gap-2">
                   <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono">
                     <span className="text-slate-500">{t.minMaxStake}: </span>
                     <strong className="text-amber-300">{game.minBet.toLocaleString()} - {game.maxBet.toLocaleString()}</strong>
                   </div>
 
-                  {isFlagship ? (
-                    <button
-                      id={`btn-play-${game.id}`}
-                      className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Play className="w-3 h-3 fill-current" />
-                      <span>{t.enterTable}</span>
-                    </button>
-                  ) : (
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-800/60 text-slate-400 text-[11px] font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-500" />
-                      <span>{t.comingSoon}</span>
-                    </span>
-                  )}
+                  <button
+                    id={`btn-play-${game.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGameClick(game);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>{language === 'ar' ? 'العب الآن' : 'Play Now'}</span>
+                  </button>
                 </div>
               </div>
             );

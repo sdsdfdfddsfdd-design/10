@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AdminConfig, GameHistoryEntry, TableState, TransactionRecord, UserProfile } from '../types/game';
+import { AdminConfig, GameHistoryEntry, GameWinRates, TableState, TransactionRecord, UserProfile } from '../types/game';
 import { 
   Shield, 
   Power, 
@@ -20,9 +20,12 @@ import {
   Sparkles,
   RotateCcw,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Percent,
+  Sliders
 } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
+import { AdminOddsControl } from './AdminOddsControl';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -38,7 +41,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   history,
 }) => {
   const { t, isRTL, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'users' | 'overview' | 'settings' | 'players' | 'transactions' | 'history'>('users');
+  const [activeTab, setActiveTab] = useState<'odds' | 'users' | 'overview' | 'settings' | 'players' | 'transactions' | 'history'>('odds');
   const [config, setConfig] = useState<AdminConfig>({
     isGameEnabled: true,
     defaultChips: [50, 500, 2000, 10000],
@@ -46,8 +49,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     minBet: 50,
     maxBet: 50000,
     autoFillBots: true,
-    defaultPlayerBalance: 15000,
+    defaultPlayerBalance: 0,
+    globalWinRate: 40,
+    houseMode: 'casino_standard',
+    gameWinRates: {
+      global: 40,
+      teenPatti: 40,
+      rocketCrash: 42,
+      mines: 45,
+      horseRacing: 38,
+      happyCake: 40,
+      luckySeven: 44,
+      dragonTiger: 45,
+    },
   });
+  const [oddsRates, setOddsRates] = useState<GameWinRates>({
+    global: 40,
+    teenPatti: 40,
+    rocketCrash: 42,
+    mines: 45,
+    horseRacing: 38,
+    happyCake: 40,
+    luckySeven: 44,
+    dragonTiger: 45,
+  });
+  const [houseMode, setHouseMode] = useState<'custom' | 'casino_standard' | 'high_profit' | 'promotional' | 'fair'>('casino_standard');
+  const [oddsSaving, setOddsSaving] = useState(false);
+  const [oddsSaveSuccess, setOddsSaveSuccess] = useState(false);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -87,15 +115,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const fetchUsersList = async () => {
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await fetch('/api/admin/users', {
+        headers: { 'Accept': 'application/json' },
+      });
       if (res.ok) {
-        const data = await res.json();
-        if (data.users) {
-          setUsersList(data.users);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && Array.isArray(data.users)) {
+            setUsersList(data.users);
+          }
         }
       }
     } catch (err) {
-      console.error('Failed to fetch users', err);
+      console.warn('Failed to fetch users:', err);
     }
   };
 
@@ -103,25 +136,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsLoading(true);
     try {
       const [res, fbRes] = await Promise.all([
-        fetch('/api/admin/overview'),
-        fetch('/api/firebase/status').catch(() => null)
+        fetch('/api/admin/overview', { headers: { 'Accept': 'application/json' } }),
+        fetch('/api/firebase/status', { headers: { 'Accept': 'application/json' } }).catch(() => null)
       ]);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.config) {
-          setConfig(data.config);
-          setChipInputs(data.config.defaultChips.join(', '));
-        }
-        if (data.recentTransactions) {
-          setTransactions(data.recentTransactions);
+      if (res && res.ok) {
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data.config) {
+            setConfig(data.config);
+            setChipInputs(data.config.defaultChips.join(', '));
+            if (data.config.gameWinRates) {
+              setOddsRates(data.config.gameWinRates);
+            }
+            if (data.config.houseMode) {
+              setHouseMode(data.config.houseMode);
+            }
+          }
+          if (data.recentTransactions) {
+            setTransactions(data.recentTransactions);
+          }
         }
       }
       if (fbRes && fbRes.ok) {
-        const fbData = await fbRes.json();
-        setFirebaseStatus(fbData);
+        const fbContentType = fbRes.headers.get('content-type');
+        if (fbContentType && fbContentType.includes('application/json')) {
+          const fbData = await fbRes.json();
+          setFirebaseStatus(fbData);
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch admin overview', err);
+      console.warn('Failed to fetch admin overview:', err);
     } finally {
       setIsLoading(false);
     }
@@ -155,6 +200,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleSaveOdds = async (rates: GameWinRates, mode: 'custom' | 'casino_standard' | 'high_profit' | 'promotional' | 'fair') => {
+    setOddsSaving(true);
+    try {
+      const updatedConfig: Partial<AdminConfig> = {
+        ...config,
+        globalWinRate: rates.global,
+        gameWinRates: rates,
+        houseMode: mode,
+      };
+
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: updatedConfig }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setConfig(data.config);
+        if (data.config.gameWinRates) setOddsRates(data.config.gameWinRates);
+        if (data.config.houseMode) setHouseMode(data.config.houseMode);
+        setOddsSaveSuccess(true);
+        setTimeout(() => setOddsSaveSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save odds config', err);
+    } finally {
+      setOddsSaving(false);
+    }
+  };
+
   const handleSaveConfig = async () => {
     try {
       const parsedChips = chipInputs
@@ -165,6 +241,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const updated = {
         ...config,
         defaultChips: parsedChips.length > 0 ? parsedChips : config.defaultChips,
+        globalWinRate: oddsRates.global,
+        gameWinRates: oddsRates,
+        houseMode: houseMode,
       };
 
       const res = await fetch('/api/admin/config', {
@@ -276,6 +355,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleZeroAllBalances = async () => {
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من تصفير أرصدة جميع المستخدمين فوراً وإلغاء أي كوينزات وهمية سابقة نهائياً؟ لن يتمكن أي لاعب من اللعب إلا بعد الشحن الفعلي أو الشراء.' : 'Are you sure you want to zero all user balances to 0? No player will have coins without real recharge.')) return;
+    setActionInProgress('all-balances');
+    try {
+      const res = await fetch('/api/admin/zero-all-balances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        setUsersList(prev => prev.map(u => ({ ...u, balance: 0 })));
+        setActionToast({ msg: language === 'ar' ? 'تم بنجاح تصفير كافة الأرصدة وإلغاء الكوينزات الوهمية! الرصيد 0 للجميع.' : 'All user balances zeroed to 0 successfully!', type: 'success' });
+        fetchUsersList();
+        setTimeout(() => setActionToast(null), 4500);
+      } else {
+        setActionToast({ msg: 'فشل تصفير الأرصدة', type: 'error' });
+        setTimeout(() => setActionToast(null), 3000);
+      }
+    } catch {
+      setActionToast({ msg: 'تعذر الاتصال بالسيرفر لتصفير الأرصدة', type: 'error' });
+      setTimeout(() => setActionToast(null), 3000);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
   const handleToggleUserRole = async (user: UserProfile) => {
     const targetUserId = user.userId || (user as any).id;
     const newRole = user.role === 'admin' ? 'player' : 'admin';
@@ -302,48 +406,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-4xl bg-slate-900 border border-cyan-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 xs:p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-4xl bg-slate-900 border border-cyan-500/30 rounded-2xl xs:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-              <Shield className="w-5 h-5" />
+        <div className="flex items-center justify-between px-3 xs:px-6 py-3 xs:py-4 border-b border-slate-800 bg-slate-950/50">
+          <div className="flex items-center gap-2 xs:gap-3">
+            <div className="p-1.5 xs:p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shrink-0">
+              <Shield className="w-4 h-4 xs:w-5 xs:h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white flex items-center gap-2">
+              <h2 className="text-sm xs:text-lg font-black text-white flex items-center gap-1.5 xs:gap-2">
                 <span>Admin Control Dashboard</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                <span className="text-[9px] xs:text-[10px] uppercase font-bold tracking-wider px-1.5 xs:px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                   Live Management
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-[10px] xs:text-xs text-slate-400 line-clamp-1">
                 Full game control: toggle game, table rules, bets, transactions, and players
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
             <button
               onClick={fetchAdminData}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="p-1.5 xs:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
               title="Refresh"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 xs:w-4 xs:h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
               id="btn-close-admin"
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="p-1.5 xs:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
             </button>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 px-6 pt-3 border-b border-slate-800 bg-slate-950/30 overflow-x-auto text-xs" dir="rtl">
+        <div className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-6 pt-2 xs:pt-3 border-b border-slate-800 bg-slate-950/30 overflow-x-auto text-[11px] xs:text-xs" dir="rtl">
           {[
+            { id: 'odds', label: 'نسب المكسب والخسارة (RTP & Odds) 🎯', icon: Percent },
             { id: 'users', label: 'إدارة وشحن المستخدمين (Users & Recharge)', icon: Users },
             { id: 'overview', label: 'نظرة عامة (Overview)', icon: Activity },
             { id: 'settings', label: 'إعدادات اللعبة والرهان', icon: Settings },
@@ -374,7 +479,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         {/* Tab Contents */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-3 xs:p-6 space-y-4 xs:space-y-5">
+          {/* TAB: ODDS & WIN/LOSS RATES */}
+          {activeTab === 'odds' && (
+            <AdminOddsControl
+              initialRates={oddsRates}
+              initialHouseMode={houseMode}
+              onSave={handleSaveOdds}
+              isSaving={oddsSaving}
+              saveSuccess={oddsSaveSuccess}
+              language={language}
+            />
+          )}
+
           {/* TAB: USERS & RECHARGE */}
           {activeTab === 'users' && (
             <div className="space-y-5" dir="rtl">
@@ -397,7 +514,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center">
+                <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                  <button
+                    disabled={actionInProgress === 'all-balances'}
+                    onClick={handleZeroAllBalances}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    title="تصفير كافة الأرصدة وإلغاء الكوينزات الوهمية"
+                  >
+                    <Coins className="w-3.5 h-3.5 text-yellow-300" />
+                    <span>{language === 'ar' ? 'تصفير كافة الأرصدة (منع الوهمي)' : 'Zero All Fake Balances'}</span>
+                  </button>
                   <button
                     disabled={isCleaningServer}
                     onClick={handleExecuteServerCleanup}
@@ -828,6 +954,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    WhatsApp Number for Coin Purchase (e.g. 201000000000):
+                  </label>
+                  <input
+                    type="text"
+                    value={config.whatsappNumber || ''}
+                    onChange={(e) => setConfig({ ...config, whatsappNumber: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    placeholder="Enter phone number with country code"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Players will be redirected to this number when attempting to buy coins.
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">

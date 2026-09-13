@@ -57,7 +57,7 @@ export const CasinoChipsBar: React.FC<CasinoChipsBarProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3 py-1">
+    <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 py-1">
       {chips.map((chipVal) => {
         const details = getChipDetails(chipVal);
         const isSelected = selectedChip === chipVal;
@@ -68,7 +68,7 @@ export const CasinoChipsBar: React.FC<CasinoChipsBarProps> = ({
             id={`btn-chip-${chipVal}`}
             disabled={disabled}
             onClick={() => onSelectChip(chipVal)}
-            className={`group relative w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+            className={`group relative w-9 h-9 xs:w-11 xs:h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
               isSelected
                 ? 'scale-110 -translate-y-2 z-20'
                 : 'hover:scale-105 active:scale-95 opacity-95 hover:opacity-100'

@@ -118,7 +118,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     >
       <div 
         id="auth-modal-card"
-        className="relative w-full max-w-md rounded-2xl bg-gradient-to-b from-amber-950/90 via-slate-900/95 to-black border-2 border-amber-500/40 p-6 shadow-2xl shadow-amber-500/20 text-white overflow-hidden"
+        className="relative w-full max-w-md rounded-2xl bg-gradient-to-b from-amber-950/90 via-slate-900/95 to-black border-2 border-amber-500/40 p-4 xs:p-6 shadow-2xl shadow-amber-500/20 text-white overflow-hidden max-h-[92dvh] overflow-y-auto"
       >
         {/* Glow ambient decoration */}
         <div className="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />

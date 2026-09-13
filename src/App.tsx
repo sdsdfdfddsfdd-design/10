@@ -8,7 +8,14 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { RulesModal } from './components/RulesModal';
 import { RankModal } from './components/RankModal';
 import { AuthModal } from './components/AuthModal';
+import { HappyCakeGame } from './components/HappyCakeGame';
+import { LuckySevenGame } from './components/LuckySevenGame';
+import { DragonTigerGame } from './components/DragonTigerGame';
+import { RocketCrashGame } from './components/RocketCrashGame';
+import { HorseRacingGame } from './components/HorseRacingGame';
+import { MinesGame } from './components/MinesGame';
 import { sound } from './lib/audio';
+import { GamingAppBackground } from './components/GamingAppBackground';
 import { 
   Volume2, 
   VolumeX, 
@@ -32,26 +39,36 @@ const DEFAULT_USER_NAME_KEY = 'royal_tp_user_name';
 
 export default function App() {
   const { t, language, setLanguage, isRTL } = useLanguage();
-  const [userId, setUserId] = useState<string>(() => {
-    let id = localStorage.getItem(DEFAULT_USER_ID_KEY);
-    if (!id || typeof id !== 'string' || !id.trim() || id === 'undefined' || id === 'null') {
-      id = 'usr_' + Math.random().toString(36).substring(2, 8);
-      localStorage.setItem(DEFAULT_USER_ID_KEY, id);
-    }
-    return id.trim();
-  });
-
-  const [userName, setUserName] = useState<string>(() => {
-    return localStorage.getItem(DEFAULT_USER_NAME_KEY) || 'VIP_Player';
-  });
+  const [userId, setUserId] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
 
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
-  const [balance, setBalance] = useState<number>(15000);
+  const [balance, setBalance] = useState<number>(0);
   const [table, setTable] = useState<TableState | null>(null);
   const [selectedChip, setSelectedChip] = useState<number>(100);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(sound.getMuted());
-  const [currentView, setCurrentView] = useState<'lobby' | 'game'>('lobby');
+  const [currentView, setCurrentView] = useState<'lobby' | 'game' | 'happy-cake' | 'lucky-7' | 'dragon-tiger' | 'rocket-crash' | 'horse-racing' | 'mines'>('lobby');
+
+  // Odds & Win/Loss rates config
+  const [oddsConfig, setOddsConfig] = useState<{
+    globalWinRate: number;
+    gameWinRates: Record<string, number>;
+    houseMode: string;
+  }>({
+    globalWinRate: 40,
+    gameWinRates: {
+      global: 40,
+      teenPatti: 40,
+      rocketCrash: 42,
+      mines: 45,
+      horseRacing: 38,
+      happyCake: 40,
+      luckySeven: 44,
+      dragonTiger: 45,
+    },
+    houseMode: 'casino_standard',
+  });
 
   // Modals
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
@@ -96,12 +113,12 @@ export default function App() {
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'VIP Player'),
             role: isAdminEmail ? 'admin' : 'player',
-            balance: 15000,
+            balance: 0,
           };
           setCurrentUserProfile(fallbackProfile);
           setUserId(uid);
           setUserName(fallbackProfile.displayName);
-          setBalance(15000);
+          setBalance(0);
         }
       } else {
         setCurrentUserProfile(null);
@@ -149,28 +166,40 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/game/history');
+      const res = await fetch('/api/game/history', {
+        headers: { 'Accept': 'application/json' },
+      });
       if (res.ok) {
-        const data = await res.json();
-        if (data.history) {
-          setHistory(data.history);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && Array.isArray(data.history)) {
+            setHistory(data.history);
+          }
         }
       }
     } catch (err) {
-      console.error('Failed to fetch history', err);
+      console.warn('Failed to fetch history:', err);
     }
   };
 
   const fetchBalance = async () => {
     if (!userId || typeof userId !== 'string' || !userId.trim()) return;
     try {
-      const res = await fetch(`/api/user/${encodeURIComponent(userId.trim())}/balance`);
+      const res = await fetch(`/api/user/${encodeURIComponent(userId.trim())}/balance`, {
+        headers: { 'Accept': 'application/json' },
+      });
       if (res.ok) {
-        const data = await res.json();
-        setBalance(data.balance);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (typeof data.balance === 'number') {
+            setBalance(data.balance);
+          }
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch balance', err);
+      console.warn('Failed to fetch balance:', err);
     }
   };
 
@@ -347,16 +376,21 @@ export default function App() {
     try {
       const res = await fetch(`/api/user/${userId}/recharge`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ amount, userName }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setBalance(data.balance);
-        showToast(`+${amount.toLocaleString()} Coins Top-up Success!`);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (typeof data.balance === 'number') {
+            setBalance(data.balance);
+            showToast(`+${amount.toLocaleString()} Coins Top-up Success!`);
+          }
+        }
       }
     } catch (err) {
-      console.error('Recharge failed', err);
+      console.warn('Recharge failed:', err);
     }
   };
 
@@ -397,8 +431,134 @@ export default function App() {
           onSelectGame={(gameId) => {
             if (gameId === 'teen-patti') {
               setCurrentView('game');
+            } else if (gameId === 'happy-cake') {
+              setCurrentView('happy-cake');
+            } else if (gameId === 'lucky-7') {
+              setCurrentView('lucky-7');
+            } else if (gameId === 'dragon-tiger') {
+              setCurrentView('dragon-tiger');
+            } else if (gameId === 'rocket-crash') {
+              setCurrentView('rocket-crash');
+            } else if (gameId === 'horse-racing') {
+              setCurrentView('horse-racing');
+            } else if (gameId === 'mines') {
+              setCurrentView('mines');
             }
           }}
+        />
+      ) : currentView === 'rocket-crash' ? (
+        <RocketCrashGame
+          onBack={() => setCurrentView('lobby')}
+          balance={balance}
+          userId={userId}
+          userName={userName}
+          updateBalance={async (amt) => {
+            setBalance((prev) => {
+              const newBal = Math.max(0, prev + amt);
+              fetch('/api/user/sync-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta: amt }),
+              }).catch(() => {});
+              return newBal;
+            });
+          }}
+          language={language}
+        />
+      ) : currentView === 'horse-racing' ? (
+        <HorseRacingGame
+          onBack={() => setCurrentView('lobby')}
+          balance={balance}
+          userId={userId}
+          userName={userName}
+          updateBalance={async (amt) => {
+            setBalance((prev) => {
+              const newBal = Math.max(0, prev + amt);
+              fetch('/api/user/sync-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta: amt }),
+              }).catch(() => {});
+              return newBal;
+            });
+          }}
+          language={language}
+        />
+      ) : currentView === 'mines' ? (
+        <MinesGame
+          onBack={() => setCurrentView('lobby')}
+          balance={balance}
+          userId={userId}
+          userName={userName}
+          updateBalance={async (amt) => {
+            setBalance((prev) => {
+              const newBal = Math.max(0, prev + amt);
+              fetch('/api/user/sync-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta: amt }),
+              }).catch(() => {});
+              return newBal;
+            });
+          }}
+          language={language}
+        />
+      ) : currentView === 'happy-cake' ? (
+        <HappyCakeGame 
+          onBack={() => setCurrentView('lobby')}
+          balance={balance}
+          userId={userId}
+          userName={userName}
+          updateBalance={(amt) => {
+            setBalance((prev) => {
+              const newBal = Math.max(0, prev + amt);
+              fetch('/api/user/sync-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta: amt }),
+              }).catch(() => {});
+              return newBal;
+            });
+          }}
+          language={language}
+        />
+      ) : currentView === 'lucky-7' ? (
+        <LuckySevenGame
+          onBack={() => setCurrentView('lobby')}
+          balance={balance}
+          userId={userId}
+          userName={userName}
+          updateBalance={async (amt) => {
+            setBalance((prev) => {
+              const newBal = Math.max(0, prev + amt);
+              fetch('/api/user/sync-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta: amt }),
+              }).catch(() => {});
+              return newBal;
+            });
+          }}
+          language={language}
+        />
+      ) : currentView === 'dragon-tiger' ? (
+        <DragonTigerGame
+          onBack={() => setCurrentView('lobby')}
+          balance={balance}
+          userId={userId}
+          userName={userName}
+          updateBalance={async (amt) => {
+            setBalance((prev) => {
+              const newBal = Math.max(0, prev + amt);
+              fetch('/api/user/sync-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta: amt }),
+              }).catch(() => {});
+              return newBal;
+            });
+          }}
+          language={language}
         />
       ) : (
         /* VIEW 2: ACTIVE GAME TABLE (TEEN PATTI ROYAL) */

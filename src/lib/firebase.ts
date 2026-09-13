@@ -93,7 +93,7 @@ export async function registerWithEmail(
     email: user.email || email,
     displayName: finalName,
     role,
-    balance: 15000,
+    balance: 0,
     totalWinnings: 0,
     totalBets: 0,
     createdAt: new Date().toISOString(),
@@ -142,7 +142,7 @@ export async function loginWithEmail(email: string, pass: string): Promise<{ use
       email: user.email || email,
       displayName: user.displayName || email.split('@')[0],
       role: isOwnerAdmin ? 'admin' : 'player',
-      balance: 10000,
+      balance: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
