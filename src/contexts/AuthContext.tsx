@@ -8,7 +8,7 @@ import {
   signOut,
   updateProfile
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UserRecord } from '../types';
 
@@ -173,14 +173,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     try {
-      await setDoc(doc(db, 'users', user.uid), newUserData);
-      setCurrentUser({ id: user.uid, ...newUserData });
+      await runTransaction(db, async (transaction) => {
+        let numericId = 10000;
+        if (isAdmin) {
+          numericId = 1;
+        } else {
+          const counterRef = doc(db, 'settings', 'userCounter');
+          const counterDoc = await transaction.get(counterRef);
+          if (counterDoc.exists()) {
+            numericId = (counterDoc.data().lastId || 10000) - 1;
+            // Prevent clash with admin ID 1
+            if (numericId <= 1) numericId = 10000; 
+            transaction.update(counterRef, { lastId: numericId });
+          } else {
+            transaction.set(counterRef, { lastId: 10000 });
+          }
+        }
+        newUserData.numericId = numericId;
+        transaction.set(doc(db, 'users', user.uid), newUserData);
+      });
+      setCurrentUser({ id: user.uid, ...newUserData } as UserRecord);
     } catch (err) {
       console.error("Firestore Write Error:", err);
-      // Even if Firestore write fails, we set the local state so the user can proceed
-      setCurrentUser({ id: user.uid, ...newUserData });
-      // We might want to alert the user, but for now, logging is enough.
-      // The UI will just work with the in-memory user object.
+      setCurrentUser({ id: user.uid, ...newUserData } as UserRecord);
     }
   };
 

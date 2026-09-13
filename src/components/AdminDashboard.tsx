@@ -26,6 +26,9 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
 import { AdminOddsControl } from './AdminOddsControl';
+import { initializeApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { generateUniqueCustomId, config as firebaseConfig } from '../lib/firebase';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -93,6 +96,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [rechargingUserId, setRechargingUserId] = useState<string | null>(null);
   const [rechargeAlert, setRechargeAlert] = useState<{ userId: string; msg: string; type: 'success' | 'error' } | null>(null);
 
+  // Agency creation state
+  const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
+  const [agencyName, setAgencyName] = useState('');
+  const [agencyEmail, setAgencyEmail] = useState('');
+  const [agencyPassword, setAgencyPassword] = useState('');
+  const [agencyLoading, setAgencyLoading] = useState(false);
+  const [agencyError, setAgencyError] = useState('');
+
   // Deletion, Reset, and Cleanup state
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserProfile | null>(null);
   const [confirmResetUser, setConfirmResetUser] = useState<UserProfile | null>(null);
@@ -112,6 +123,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       fetchUsersList();
     }
   }, [isOpen]);
+
+  const handleCreateAgency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agencyName.trim() || !agencyEmail.trim() || agencyPassword.length < 6) {
+      setAgencyError('الرجاء إدخال اسم، بريد إلكتروني، وكلمة مرور (6 أحرف على الأقل)');
+      return;
+    }
+    setAgencyLoading(true);
+    setAgencyError('');
+    try {
+      // Use a secondary app so we don't log out the admin
+      const tempApp = initializeApp(firebaseConfig, 'AgencyCreationApp-' + Date.now());
+      const tempAuth = getAuth(tempApp);
+      
+      const cred = await createUserWithEmailAndPassword(tempAuth, agencyEmail, agencyPassword);
+      const user = cred.user;
+      
+      const customId = await generateUniqueCustomId(false);
+      
+      const newAgencyProfile: UserProfile = {
+        userId: user.uid,
+        customId,
+        email: user.email || agencyEmail,
+        displayName: agencyName,
+        role: 'agency',
+        balance: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save to server
+      await fetch('/api/user/sync-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAgencyProfile),
+      });
+
+      await signOut(tempAuth);
+      
+      setIsAgencyModalOpen(false);
+      setAgencyName('');
+      setAgencyEmail('');
+      setAgencyPassword('');
+      fetchUsersList(); // refresh the list
+    } catch (err: any) {
+      console.error(err);
+      setAgencyError(err.message || 'حدث خطأ أثناء إنشاء الوكالة');
+    } finally {
+      setAgencyLoading(false);
+    }
+  };
 
   const fetchUsersList = async () => {
     try {
@@ -586,6 +648,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     إجمالي المستخدمين: <span className="font-bold text-amber-400">{usersList.length}</span>
                   </div>
                   <button
+                    onClick={() => setIsAgencyModalOpen(true)}
+                    className="p-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 transition-all flex items-center gap-1.5 text-xs font-bold"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>إنشاء وكالة شحن</span>
+                  </button>
+                  <button
                     onClick={fetchUsersList}
                     className="p-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all flex items-center gap-1.5 text-xs font-bold"
                   >
@@ -651,9 +720,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                                   u.role === 'admin' 
                                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                    : u.role === 'agency'
+                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                 }`}>
-                                  {u.role === 'admin' ? '👑 مدير (Admin)' : '🎮 لاعب (Player)'}
+                                  {u.role === 'admin' ? '👑 مدير (Admin)' : u.role === 'agency' ? '🛡️ وكالة (Agency)' : '🎮 لاعب (Player)'}
                                 </span>
                               </div>
                               <p className="text-xs text-slate-400 font-mono mt-0.5">{u.email || `${uId}@player.local`}</p>
@@ -1233,6 +1304,89 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span>تأكيد الحذف النهائي</span>
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Create Agency Modal */}
+        {isAgencyModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-md p-5 rounded-2xl bg-slate-900 border border-blue-500/40 shadow-2xl space-y-4" dir="rtl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-blue-400">
+                  <div className="p-2.5 rounded-xl bg-blue-500/20 border border-blue-500/30">
+                    <Shield className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">إنشاء وكالة شحن</h3>
+                    <p className="text-xs text-blue-300">إضافة حساب وكالة جديد بصلاحيات مخصصة</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsAgencyModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleCreateAgency} className="space-y-4">
+                {agencyError && (
+                  <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs text-center font-bold">
+                    {agencyError}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 px-1">اسم الوكالة</label>
+                  <input
+                    type="text"
+                    value={agencyName}
+                    onChange={(e) => setAgencyName(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/50"
+                    placeholder="مثال: وكالة الرياض للشحن"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 px-1">البريد الإلكتروني</label>
+                  <input
+                    type="email"
+                    value={agencyEmail}
+                    onChange={(e) => setAgencyEmail(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/50 text-left"
+                    placeholder="agency@example.com"
+                    dir="ltr"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 px-1">كلمة المرور</label>
+                  <input
+                    type="password"
+                    value={agencyPassword}
+                    onChange={(e) => setAgencyPassword(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/50 text-left"
+                    placeholder="••••••••"
+                    dir="ltr"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAgencyModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={agencyLoading}
+                    className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {agencyLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>إنشاء الحساب</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

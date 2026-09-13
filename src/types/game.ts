@@ -134,7 +134,7 @@ export interface UserProfile {
   customId: string;
   email: string;
   displayName: string;
-  role: 'admin' | 'player';
+  role: 'admin' | 'player' | 'agency';
   balance: number;
   totalWinnings?: number;
   totalBets?: number;

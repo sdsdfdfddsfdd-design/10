@@ -1,17 +1,18 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  setDoc, 
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
   updateDoc,
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
+  collection,
+  query,
+  orderBy,
+  limit,
   getDocs,
   onSnapshot,
-  setLogLevel
+  setLogLevel,
+  runTransaction
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -38,10 +39,31 @@ export const db = (config as { firestoreDatabaseId?: string }).firestoreDatabase
   : getFirestore(app);
 export const auth = getAuth(app);
 
-// Helper to generate unique VIP identifier
-export function generateUniqueCustomId(): string {
-  const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `ROYAL-${randomNum}`;
+// Helper to generate unique VIP identifier using a transaction
+export async function generateUniqueCustomId(isAdmin: boolean = false): Promise<string> {
+  if (isAdmin) {
+    return '1';
+  }
+  
+  try {
+    const counterRef = doc(db, 'settings', 'userCounter');
+    const newId = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      let numericId = 10000;
+      if (counterDoc.exists()) {
+        numericId = (counterDoc.data().lastId || 10000) - 1;
+        if (numericId <= 1) numericId = 10000;
+      }
+      transaction.set(counterRef, { lastId: numericId }, { merge: true });
+      return numericId;
+    });
+    return String(newId);
+  } catch (error) {
+    console.error("Error generating custom ID:", error);
+    // Fallback to random if transaction fails
+    const randomNum = Math.floor(10000 + Math.random() * 9000);
+    return String(randomNum);
+  }
 }
 
 // Fetch user profile from Firestore
@@ -82,10 +104,10 @@ export async function registerWithEmail(
     // optional
   }
 
-  const customId = generateUniqueCustomId();
   // Any newly created account receives admin role and dashboard access as requested
   const isOwnerAdmin = (user.email || email).toLowerCase() === 'sdsdfdfddsfdd@gmail.com' || (user.email || email).toLowerCase().includes('admin');
-  const role: 'admin' | 'player' = isOwnerAdmin ? 'admin' : 'player';
+  const customId = await generateUniqueCustomId(isOwnerAdmin);
+  const role: 'admin' | 'player' | 'agency' = isOwnerAdmin ? 'admin' : 'player';
 
   const profile: UserProfile = {
     userId: user.uid.trim(),
@@ -134,8 +156,8 @@ export async function loginWithEmail(email: string, pass: string): Promise<{ use
   const cleanUid = user.uid.trim();
   let profile = await getUserProfileFromFirestore(cleanUid);
   if (!profile) {
-    const customId = generateUniqueCustomId();
     const isOwnerAdmin = (user.email || email).toLowerCase() === 'sdsdfdfddsfdd@gmail.com' || (user.email || email).toLowerCase().includes('admin');
+    const customId = await generateUniqueCustomId(isOwnerAdmin);
     profile = {
       userId: cleanUid,
       customId,
@@ -154,7 +176,7 @@ export async function loginWithEmail(email: string, pass: string): Promise<{ use
     }
   } else if (!profile.customId) {
     // Ensure unique custom ID is present
-    profile.customId = generateUniqueCustomId();
+    profile.customId = await generateUniqueCustomId(profile.role === 'admin');
     try {
       const userRef = doc(db, 'users', cleanUid);
       await setDoc(userRef, { customId: profile.customId }, { merge: true });
